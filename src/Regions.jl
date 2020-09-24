@@ -1,38 +1,40 @@
 """
     Regions
 
-    Main module for Regions.jl - a set of types that model a discrete 2-dimensional region concept.
+    Main module for Regions.jl - a set of types that model a discrete 
+    2-dimensional region concept.
 
 # Exports
 
-* Chord   
+* Run   
 * Region
-"""module Regions
+"""
+module Regions
 
 
 #= ------------------------------------------------------------------------
 
-    Chord
+    Run
 
 ------------------------------------------------------------------------ =#
 
 import Base.isless
-export Chord
+export Run
 export isless
 export moment00, moment01, moment10
 
 """
-    Chord
+    Run
 
-A chord is a (possibly partial) scan along a row of a region. It consists of a 
-discrete row coordinate (of type Signed) and a range of discrete column 
-coordinates (of type UnitRange{Int64}).
+A run is a (possibly partial) set of consecutive coordinates within a row of a 
+region. It consists of a discrete row coordinate (of type Signed) and a range 
+of discrete column coordinates (of type UnitRange{Int64}).
 
-Chords specify a sort order. One chord is smaller than the other if it starts
-before the other chord modeling the coordinates from left to right and top to 
+Runs specify a sort order: one run is smaller than the other if it starts
+before the other run modeling the coordinates from left to right and top to 
 bottom.
 """
-struct Chord
+struct Run
     row :: Signed
     columns :: UnitRange{Int64}
 end
@@ -45,21 +47,21 @@ isless(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start < y.start
 """
      Compare two chords according their natural order.
 """
-isless(x :: Chord, y :: Chord) = (x.row < y.row_) || ((x.row == y.row) && (x.columns < y.columns))
+isless(x :: Run, y :: Run) = (x.row < y.row_) || ((x.row == y.row) && (x.columns < y.columns))
 
 #=
 The following functions should go into blob module
 =#
 
-moment00(x :: Chord) = length(x.columns)
+moment00(x :: Run) = length(x.columns)
 
-function moment10(x :: Chord)
+function moment10(x :: Run)
     n = x.columns.stop
     j = x.columns.start
     return (n * (n + 1) - (j - 1) * j) / 2.0
 end
 
-moment01(x :: Chord) = x.row * length(x.columns)
+moment01(x :: Run) = x.row * length(x.columns)
 
 
 #= ------------------------------------------------------------------------
@@ -80,7 +82,7 @@ export moment00, moment01, moment10
 A region is a 
 """
 struct Region
-    runs :: Array{Chord,1}
+    runs :: Array{Run,1}
     complement :: Bool
 end
 
