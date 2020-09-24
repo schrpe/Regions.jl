@@ -18,9 +18,9 @@ module Regions
 
 ------------------------------------------------------------------------ =#
 
-import Base.isless
+import Base.isless, Base.-, Base.+
 export Run
-export isless
+export translate, +, -, transpose, isless
 export moment00, moment01, moment10
 
 """
@@ -45,9 +45,74 @@ end
 isless(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start < y.start
 
 """
+    Transpose a range.
+
+    Transposition mirrors a range at the origin. A range is transposed by reversing, 
+    negating and adding one to each of its coordinates.
+"""
+transpose(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
+-(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
+
+"""
+    Translate a range.
+
+    Translation moves a range. A range is translated by adding the offset to 
+    each of its coordinates.
+"""
+translate(x :: UnitRange{Int64}, y :: Integer) = x.start + y : x.stop + y
++(x :: UnitRange{Int64}, y :: Integer) = x.start + y : x.stop + y
++(x :: Integer, y :: UnitRange{Int64}) = x + y.start : x + y.stop
+-(x :: UnitRange{Int64}, y :: Integer) = x.start - y : x.stop - y
+-(x :: Integer, y :: UnitRange{Int64}) = x - y.start : x - y.stop
+
+"""
+    Test if value is contained in range.
+"""
+contains(x :: UnitRange{Int64}, y :: Integer) = (y ≥ x.start) && (y ≤ x.stop)
+
+"""
+    Test if two ranges overlap.
+"""
+are_overlapping(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop ≥ y.start) : (y.stop ≥ x.start)
+
+"""
+    Test if two ranges touch.
+"""
+are_touching(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
+
+"""
+    Test if two ranges are close.
+
+If distance == 0 this is the same as are_overlapping().
+If distance == 1 this is the same as are_touching().
+If distance > 1 this is testing of closeness.
+"""
+are_close(x :: UnitRange{Int64}, y :: UnitRange{Int64}, distance :: Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)
+
+"""
+    Minkowski addition for two ranges.
+
+This is a building block for region-based morphology. It avoids
+touching each item of a range and calculates the result only by
+manipulating the range ends.
+"""
+minkowski_addition(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start + y.start : x.stop + y.stop
+
+"""
+    Minkowski subtraction for two ranges.
+
+This is a building block for region-based morphology. It avoids
+touching each item of a range and calculates the result only by
+manipulating the range ends.
+"""
+minkowski_subtraction(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (length(x) < length(y)) ? (0:-1) : (x.start + y.start + length(y) : x.start + y.start + length(x))
+
+
+
+"""
      Compare two chords according their natural order.
 """
-isless(x :: Run, y :: Run) = (x.row < y.row_) || ((x.row == y.row) && (x.columns < y.columns))
+isless(x :: Run, y :: Run) = (x.row < y.row) || ((x.row == y.row) && (x.columns < y.columns))
 
 #=
 The following functions should go into blob module
@@ -90,7 +155,29 @@ end
 The following functions should go into blob module
 =#
 
-moment00(x :: Region) = mapreduce(moment00, +, x.runs, 0)
+function moment00(x :: Region) 
+    accu = 0
+    for r in x.runs
+        accu += moment00(r)
+    end
+    return accu
+end
+
+function moment10(x :: Region) 
+    accu = 0
+    for r in x.runs
+        accu += moment10(r)
+    end
+    return accu
+end
+
+function moment01(x :: Region) 
+    accu = 0
+    for r in x.runs
+        accu += moment01(r)
+    end
+    return accu
+end
 
 
 
