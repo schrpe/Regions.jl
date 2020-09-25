@@ -41,24 +41,27 @@ struct Run
 end
 
 """
-     Compare two ranges according their natural start order.
+    is_less(x, y)
+
+Compare two ranges according their natural order. The order is determined by
+the start.
 """
 isless(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start < y.start
 
 """
-    Transpose a range.
+    transpose(x)
 
-    Transposition mirrors a range at the origin. A range is transposed by reversing, 
-    negating and adding one to each of its coordinates.
+Transpose a range. Transposition mirrors a range at the origin. A range is 
+transposed by reversing, negating and adding one to each of its coordinates.
 """
 transpose(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
 -(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
 
 """
-    Translate a range.
+    translate(x, y)
 
-    Translation moves a range. A range is translated by adding the offset to 
-    each of its coordinates.
+Translate a range. Translation moves a range. A range is translated by adding 
+an offset to each of its coordinates.
 """
 translate(x :: UnitRange{Int64}, y :: Integer) = x.start + y : x.stop + y
 +(x :: UnitRange{Int64}, y :: Integer) = x.start + y : x.stop + y
@@ -67,31 +70,41 @@ translate(x :: UnitRange{Int64}, y :: Integer) = x.start + y : x.stop + y
 -(x :: Integer, y :: UnitRange{Int64}) = x - y.start : x - y.stop
 
 """
-    Test if value is contained in range.
+    contains(x :: UnitRange{Int64}, y :: Integer)
+
+Test if range x contains value x.
 """
 contains(x :: UnitRange{Int64}, y :: Integer) = (y ≥ x.start) && (y ≤ x.stop)
 
 """
-    Test if two ranges overlap.
+    isoverlapping(x, y)
+
+Test if two ranges overlap.
 """
 isoverlapping(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop ≥ y.start) : (y.stop ≥ x.start)
 
 """
-    Test if two ranges touch.
+    istouching(x, y)
+
+Test if two ranges touch.
 """
 istouching(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
 
 """
-    Test if two ranges are close.
+    isclose(x, y, distance)
 
-If distance == 0 this is the same as are_overlapping().
-If distance == 1 this is the same as are_touching().
+Test if two ranges are close.
+
+If distance == 0 this is the same as isoverlapping().
+If distance == 1 this is the same as istouching().
 If distance > 1 this is testing of closeness.
 """
 isclose(x :: UnitRange{Int64}, y :: UnitRange{Int64}, distance :: Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)
 
 """
-    Minkowski addition for two ranges.
+    minkowski_addition(x, y)
+
+Minkowski addition for two ranges.
 
 This is a building block for region-based morphology. It avoids
 touching each item of a range and calculates the result only by
@@ -100,13 +113,15 @@ manipulating the range ends.
 minkowski_addition(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start + y.start : x.stop + y.stop
 
 """
-    Minkowski subtraction for two ranges.
+    minkowski_subtraction(x, y)
+
+Minkowski subtraction for two ranges.
 
 This is a building block for region-based morphology. It avoids
 touching each item of a range and calculates the result only by
 manipulating the range ends.
 """
-minkowski_subtraction(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (length(x) < length(y)) ? (0:-1) : (x.start + y.start + length(y) : x.start + y.start + length(x))
+minkowski_subtraction(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start + y.stop : x.stop + y.start
 
 
 
