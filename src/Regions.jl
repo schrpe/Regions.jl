@@ -36,7 +36,7 @@ before the other run modeling the coordinates from left to right and top to
 bottom.
 """
 struct Run
-    row :: Signed
+    row :: Integer
     columns :: UnitRange{Int64}
 end
 
@@ -54,7 +54,7 @@ isless(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start < y.start
 Transpose a range. Transposition mirrors a range at the origin. A range is 
 transposed by reversing, negating and adding one to each of its coordinates.
 """
-transpose(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
+transpose(x :: UnitRange{Int64}) = -x
 -(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
 
 """
@@ -63,11 +63,10 @@ transpose(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
 Translate a range. Translation moves a range. A range is translated by adding 
 an offset to each of its coordinates.
 """
-translate(x :: UnitRange{Int64}, y :: Integer) = x.start + y : x.stop + y
+translate(x :: UnitRange{Int64}, y :: Integer) = x + y
 +(x :: UnitRange{Int64}, y :: Integer) = x.start + y : x.stop + y
 +(x :: Integer, y :: UnitRange{Int64}) = x + y.start : x + y.stop
 -(x :: UnitRange{Int64}, y :: Integer) = x.start - y : x.stop - y
--(x :: Integer, y :: UnitRange{Int64}) = x - y.start : x - y.stop
 
 """
     contains(x :: UnitRange{Int64}, y :: Integer)
@@ -125,10 +124,46 @@ minkowski_subtraction(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start + 
 
 
 
+
+
+
 """
-     Compare two chords according their natural order.
+    isless(x, y)
+
+Compare two runs according their natural order.
 """
 isless(x :: Run, y :: Run) = (x.row < y.row) || ((x.row == y.row) && (x.columns < y.columns))
+
+"""
+    transpose(x)
+
+Transpose a run. Transposition mirrors a run at the origin. A range is transposed by negating 
+its row and transposing its columns.
+"""
+transpose(x :: Run) = -x
+-(x :: Run) = Run(-x.row, -x.columns)
+
+"""
+    translate(r, x, y)
+
+Translate a run. Translation moves a run. A run is translated by adding offsets to its row and 
+columns.
+"""
+translate(r :: Run, x :: Integer, y :: Integer) = r + [x, y]
+translate(x :: Run, y :: Array{Int64, 1}) = x + y
++(x :: Run, y :: Array{Int64, 1}) = Run(x.row + y[1], x.columns + y[2])
++(x :: Array{Int64, 1}, y :: Run) = Run(y[1] + x.row, y[2] + x.columns)
+-(x :: Run, y :: Array{Int64, 1}) = Run(x.row - y[1], x.columns - y[2])
+
+
+
+
+
+
+
+
+
+
 
 #=
 The following functions should go into blob module

@@ -39,6 +39,10 @@ using Test
         @test (1:2) - 5 == -4:-3
         @test (1:2) + 5 == 6:7
 
+        @test -(1:2) == -1:0
+        @test -(-1:0) == 1:2
+        @test -(-(1:2)) == 1:2
+
         @test Regions.transpose(1:2) == -1:0
         @test Regions.transpose(-1:0) == 1:2
         @test Regions.transpose(Regions.transpose(1:2)) == 1:2
@@ -97,8 +101,6 @@ using Test
         @test isclose(4:5, 2:3, 3)
         @test isclose(5:6, 1:2, 3)
         @test !isclose(6:7, 0:1, 3)
-
-
     end # "Range"
 
     @testset "Run" begin
@@ -141,6 +143,20 @@ using Test
         @test Run(0, 1:2) > Run(0, 0:1)
         @test Run(0, 1:2) ≥ Run(0, 0:1)
         @test Run(0, 0:1) ≥ Run(0, 0:1)
+
+        @test translate(Run(1, 1:2), [-5, -6]) == Run(-4, -5:-4)
+        @test translate(Run(1, 1:2), [5, 6]) == Run(6, 7:8)
+        @test Run(1, 1:2) - [5, 6] == Run(-4, -5:-4)
+        @test Run(1, 1:2) + [5, 6] == Run(6, 7:8)
+
+        @test -Run(1, 1:2) == Run(-1, -1:0)
+        @test -Run(-1, -1:0) == Run(1, 1:2)
+        @test -(-(Run(1, 1:2))) == Run(1, 1:2)
+
+        @test Regions.transpose(Run(1, 1:2)) == Run(-1, -1:0)
+        @test Regions.transpose(Run(-1, -1:0)) == Run(1, 1:2)
+        @test Regions.transpose(Regions.transpose(Run(1, 1:2))) == Run(1, 1:2)
+
 
 
     end # "Run"
