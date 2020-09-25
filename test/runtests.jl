@@ -43,6 +43,16 @@ using Test
         @test Regions.transpose(-1:0) == 1:2
         @test Regions.transpose(Regions.transpose(1:2)) == 1:2
 
+        @test !contains(0:-1, 0)
+        @test !contains(0:0, -1)
+        @test contains(0:0, 0)
+        @test !contains(0:0, 1)
+        @test !contains(0:1, -1)
+        @test contains(0:1, 0)
+        @test contains(0:1, 1)
+        @test !contains(0:1, 2)
+
+
 
     end # "Range"
 

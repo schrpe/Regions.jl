@@ -18,9 +18,10 @@ module Regions
 
 ------------------------------------------------------------------------ =#
 
-import Base.isless, Base.-, Base.+
+import Base.isless, Base.-, Base.+, Base.contains
 export Run
-export translate, +, -, transpose, isless
+export translate, +, -, transpose, contains, isoverlapping, istouching, isclose
+export isless, minkowski_addition, minkowski_subtraction
 export moment00, moment01, moment10
 
 """
@@ -73,12 +74,12 @@ contains(x :: UnitRange{Int64}, y :: Integer) = (y ≥ x.start) && (y ≤ x.stop
 """
     Test if two ranges overlap.
 """
-are_overlapping(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop ≥ y.start) : (y.stop ≥ x.start)
+isoverlapping(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop ≥ y.start) : (y.stop ≥ x.start)
 
 """
     Test if two ranges touch.
 """
-are_touching(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
+istouching(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
 
 """
     Test if two ranges are close.
@@ -87,7 +88,7 @@ If distance == 0 this is the same as are_overlapping().
 If distance == 1 this is the same as are_touching().
 If distance > 1 this is testing of closeness.
 """
-are_close(x :: UnitRange{Int64}, y :: UnitRange{Int64}, distance :: Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)
+isclose(x :: UnitRange{Int64}, y :: UnitRange{Int64}, distance :: Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)
 
 """
     Minkowski addition for two ranges.
@@ -150,6 +151,8 @@ struct Region
     runs :: Array{Run,1}
     complement :: Bool
 end
+
+Region(runs :: Array{Run,1}) = Region(runs, false)
 
 #=
 The following functions should go into blob module
