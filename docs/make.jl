@@ -4,7 +4,7 @@ using Regions
 makedocs(
     sitename = "Regions",
     format = Documenter.HTML(),
-    modules = [Region]
+    modules = [Regions]
 )
 
 # Documenter can also automatically deploy documentation to gh-pages.

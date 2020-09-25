@@ -41,7 +41,7 @@ struct Run
 end
 
 """
-    is_less(x, y)
+    isless(x, y)
 
 Compare two ranges according their natural order. The order is determined by
 the start.
