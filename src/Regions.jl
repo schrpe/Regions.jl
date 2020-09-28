@@ -123,11 +123,6 @@ manipulating the range ends.
 """
 minkowski_subtraction(x :: UnitRange{Int64}, y :: UnitRange{Int64}) = x.start + y.stop : x.stop + y.start
 
-
-
-
-
-
 """
     isless(x, y)
 
@@ -191,14 +186,27 @@ If distance > 1 this is testing of closeness.
 isclose(a :: Run, b :: Run, x :: Integer, y :: Integer) = abs(a.row - b.row) <= y && isclose(a.columns, b.columns, x)
 isclose(a :: Run, b :: Run, distance :: Array{Int64, 1}) = isclose(a, b, distance[1], distance[2])
 
+"""
+    minkowski_addition(x, y)
 
+Minkowski addition for two runs.
 
+This is a building block for region-based morphology. It avoids
+touching each item of a range and calculates the result only by
+manipulating the range ends.
+"""
+minkowski_addition(x :: Run, y :: Run) = Run(x.row + y.row, x.start + y.start : x.stop + y.stop)
 
+"""
+    minkowski_subtraction(x, y)
 
+Minkowski subtraction for two runs.
 
-
-
-
+This is a building block for region-based morphology. It avoids
+touching each item of a range and calculates the result only by
+manipulating the range ends.
+"""
+minkowski_subtraction(x :: Run, y :: Run) = Run(x.row + y.row, x.start + y.stop : x.stop + y.start)
 
 #=
 The following functions should go into blob module
