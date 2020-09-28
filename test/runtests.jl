@@ -39,12 +39,12 @@ using Test
         @test (1:2) - 5 == -4:-3
         @test (1:2) + 5 == 6:7
 
-        @test -(1:2) == -1:0
-        @test -(-1:0) == 1:2
+        @test -(1:2) == -2:-1
+        @test -(-1:0) == 0:1
         @test -(-(1:2)) == 1:2
 
-        @test Regions.transpose(1:2) == -1:0
-        @test Regions.transpose(-1:0) == 1:2
+        @test Regions.transpose(1:2) == -2:-1
+        @test Regions.transpose(-1:0) == 0:1
         @test Regions.transpose(Regions.transpose(1:2)) == 1:2
 
         @test !contains(0:-1, 0)
@@ -149,12 +149,12 @@ using Test
         @test Run(1, 1:2) - [5, 6] == Run(-4, -5:-4)
         @test Run(1, 1:2) + [5, 6] == Run(6, 7:8)
 
-        @test -Run(1, 1:2) == Run(-1, -1:0)
-        @test -Run(-1, -1:0) == Run(1, 1:2)
+        @test -Run(1, 1:2) == Run(-1, -2:-1)
+        @test -Run(-1, -1:0) == Run(1, 0:1)
         @test -(-(Run(1, 1:2))) == Run(1, 1:2)
 
-        @test Regions.transpose(Run(1, 1:2)) == Run(-1, -1:0)
-        @test Regions.transpose(Run(-1, -1:0)) == Run(1, 1:2)
+        @test Regions.transpose(Run(1, 1:2)) == Run(-1, -2:-1)
+        @test Regions.transpose(Run(-1, -1:0)) == Run(1, 0:1)
         @test Regions.transpose(Regions.transpose(Run(1, 1:2))) == Run(1, 1:2)
 
         @test !contains(Run(0, 0:-1), 0, -1)

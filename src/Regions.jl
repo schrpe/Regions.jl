@@ -41,7 +41,7 @@ struct Run
 end
 
 """
-    isless(x, y)
+    isless(x::UnitRange{Int64}, y::UnitRange{Int64})
 
 Compare two ranges according their natural order. The order is determined by
 the start.
