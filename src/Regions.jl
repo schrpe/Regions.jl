@@ -18,7 +18,7 @@ module Regions
 
 ------------------------------------------------------------------------ =#
 
-import Base.isless, Base.-, Base.+, Base.contains
+import Base.isless, Base.transpose, Base.-, Base.+, Base.contains
 export Run
 export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
 export isless, minkowski_addition, minkowski_subtraction
@@ -55,7 +55,7 @@ Transpose a range. Transposition mirrors a range at the origin. A range is
 transposed by reversing, negating and adding one to each of its coordinates.
 """
 transpose(x :: UnitRange{Int64}) = -x
--(x :: UnitRange{Int64}) = -x.stop+1 : -x.start+1
+-(x :: UnitRange{Int64}) = -x.stop : -x.start
 
 """
     translate(x, y)
@@ -229,9 +229,9 @@ moment01(x :: Run) = x.row * length(x.columns)
 
 ------------------------------------------------------------------------ =#
 
-import Base.isless
+import Base.copy, Base.-
 export Region
-export isless
+export copy, transpose, -
 export moment00, moment01, moment10
 
 
@@ -246,6 +246,30 @@ struct Region
 end
 
 Region(runs :: Array{Run,1}) = Region(runs, false)
+
+"""
+    copy(x :: Region)
+    
+Create a copy of a region.    
+"""
+copy(x :: Region) = Region(copy(x.runs), x.complement)
+
+"""
+    transpose(x::Region)
+
+Transpose a region. Transposition mirrors a region at the origin. 
+"""
+function transpose(x :: Region)
+    result = Region([], x.complement)
+    # iterating backwards maintains the correct sort order of the runs
+    for i in [size(x.runs)[1]:-1:1]
+        append!(result.runs, -x.runs[i])
+    end
+    return result
+end
+-(x :: Region) = transpose(x)
+
+
 
 #=
 The following functions should go into blob module
