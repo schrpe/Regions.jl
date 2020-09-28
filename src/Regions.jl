@@ -20,7 +20,7 @@ module Regions
 
 import Base.isless, Base.-, Base.+, Base.contains
 export Run
-export translate, +, -, transpose, contains, isoverlapping, istouching, isclose
+export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
 export isless, minkowski_addition, minkowski_subtraction
 export moment00, moment01, moment10
 
@@ -74,6 +74,7 @@ translate(x :: UnitRange{Int64}, y :: Integer) = x + y
 Test if range x contains value x.
 """
 contains(x :: UnitRange{Int64}, y :: Integer) = (y ≥ x.start) && (y ≤ x.stop)
+∈(x :: UnitRange{Int64}, y :: Integer) = contains(x, y)
 
 """
     isoverlapping(x, y)
@@ -155,6 +156,40 @@ translate(x :: Run, y :: Array{Int64, 1}) = x + y
 +(x :: Array{Int64, 1}, y :: Run) = Run(y[1] + x.row, y[2] + x.columns)
 -(x :: Run, y :: Array{Int64, 1}) = Run(x.row - y[1], x.columns - y[2])
 
+"""
+    contains(x :: Run, y :: Integer)
+
+Test if run x contains value x.
+"""
+contains(r :: Run, x :: Integer, y :: Integer) = (r.row == y) && contains(r.columns, x)
+contains(x :: Run, y :: Array{Int64, 1}) = contains(r, y[1], y[2])
+∈(x :: Run, y :: Array{Int64, 1}) = contains(x, y)
+
+"""
+    isoverlapping(x, y)
+
+Test if two runs overlap.
+"""
+isoverlapping(x :: Run, y :: Run) = x.row == y.row && isoverlapping(x.columns, y.columns)
+
+"""
+    istouching(x, y)
+
+Test if two runs touch.
+"""
+istouching(x :: Run, y :: Run) = abs(x.row - y.row) ≤ 1 && istouching(x.columns, y.columns)
+
+"""
+    isclose(x, y, distance)
+
+Test if two runs are close.
+
+If distance == 0 this is the same as isoverlapping().
+If distance == 1 this is the same as istouching().
+If distance > 1 this is testing of closeness.
+"""
+isclose(a :: Run, b :: Run, x :: Integer, y :: Integer) = abs(a.row - b.row) <= y && isclose(a.columns, b.columns, x)
+isclose(a :: Run, b :: Run, distance :: Array{Int64, 1}) = isclose(a, b, distance[1], distance[2])
 
 
 
