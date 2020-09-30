@@ -18,10 +18,10 @@ module Regions
 
 ------------------------------------------------------------------------ =#
 
-import Base.isless, Base.transpose, Base.-, Base.+, Base.contains
+import Base.isless, Base.transpose, Base.-, Base.+, Base.contains, Base.isempty
 export Run
 export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
-export isless, minkowski_addition, minkowski_subtraction
+export isempty, isless, minkowski_addition, minkowski_subtraction
 export moment00, moment01, moment10
 
 """
@@ -39,6 +39,8 @@ struct Run
     row::Integer
     columns::UnitRange{Int64}
 end
+
+isempty(x::UnitRange{Int64}) = x.stop < x.start
 
 """
     isless(x::UnitRange{Int64}, y::UnitRange{Int64})
@@ -122,6 +124,9 @@ touching each item of a range and calculates the result only by
 manipulating the range ends.
 """
 minkowski_subtraction(x::UnitRange{Int64}, y::UnitRange{Int64}) = x.start + y.stop : x.stop + y.start
+
+isempty(x::Run) = isempty(x.columns)
+
 
 """
     isless(x::Run, y::Run)
@@ -232,7 +237,7 @@ moment01(x::Run) = x.row * length(x.columns)
 import Base.copy, Base.-, Base.union, Base.==
 export Region
 export copy, transpose, -, contains, translate, translate!, left, right, bottom, top
-export center, center!, merge, union, intersection
+export center, center!, merge, union, intersection, difference
 export moment00, moment01, moment10
 
 """
@@ -468,6 +473,67 @@ end
 
 function intersection(a::Region, b::Region)
     return Region(intersection(a.runs, b.runs), false)
+end
+
+function difference(a::Array{Run,1}, b::Array{Run,1})
+    if size(a, 1) == 0
+        return b
+    end
+    if size(b, 1) == 0
+        return a
+    end
+
+    res = Array{Run,1}(undef, 0)
+
+    # first_b and last_b form a range of chords in b that are in the same row
+    first_b = findfirst(x -> x.row >= a[1].row, b)
+    last_b = first_b
+    if first_b != nothing
+        last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b, 1)))
+    end
+
+    for a_index in 1:size(a, 1)
+        if first_b != nothing && a[a_index].row > b[first_b].row
+            # update the range
+            first_b = findfirst(x -> x.row >= a[a_index].row, b)
+            last_b = first_b
+            if first_b != nothing
+                last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b, 1)))
+            end
+        end
+        if first_b == nothing || a[a_index].row != b[first_b].row
+            push!(res, a[a_index])
+        else
+            for i in first_b:last_b
+                if isoverlapping(a[a_index], b[i])
+                    # total overlap, erase all of a_chord and break
+                    if b[i].columns.start <= a[a_index].columns.start && b[i].columns.stop >= a[a_index].columns.stop
+                        a[a_index] = Run(a[a_index].row, a[a_index].columns.start:a[a_index].columns.start-1)
+                        break;
+                    # overlap at left only, shorten a_chord at left and continue
+                    elseif b[i].columns.start <= a[a_index].columns.start
+                        a[a_index] = Run(a[a_index].row, b[i].columns.stop+1:a[a_index].columns.stop)
+                    # overlap at right only, shorten a_chord at right and continue
+                    elseif b[i.columns.stop >= a[a_index].columns.stop]
+                        a[a_index] = Run(a[a_index].row, a[a_index].columns.start:b[i].columns.start-1)
+                    # overlap in the middle, split a_chord into two and continue
+                    else
+                        push!(res, Row(a[a_index].row, a[a_index].columns.start:b[i].columns.start-1))
+                        a[a_index] = Row(a[a_index].row, b[i].columns.stop+1, a[a_index].columns.stop)
+                    end
+                end
+            end
+            if !isempty(a[a_index])
+                push!(res, a[a_index])
+            end
+        end
+    end
+
+    return res
+end
+
+function difference(a::Region, b::Region)
+    return Region(difference(a.runs, b.runs), false)
 end
 
 #=
