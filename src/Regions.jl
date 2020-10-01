@@ -409,6 +409,24 @@ function merge(a::Array{Run,1}, b::Array{Run,1})
     return res
 end
 
+"""
+    sort(a::Array{Run, 1})
+
+Variant of sort that returns a sorted copy of a leaving a itself unmodified. This ensures that
+runs are sorted after an operation that might have destroyed the sort order, such as 
+downsampling.
+"""
+sort(a::Array{Run,1}) = sort(a)
+
+
+"""
+    sort!(a::Array{Run, 1})
+
+Sort the vector a in place. This ensures that runs are sorted after an operation that might 
+have destroyed the sort order, such as downsampling.
+"""
+sort!(a::Array{Run,1}) = sort!(a)
+
 function pack!(a::Array{Run,1})
     read = 1
     write = 1
@@ -426,14 +444,34 @@ function pack!(a::Array{Run,1})
     deleteat!(a, write:size(a,1))
 end
 
+"""
+    union(a::Array{Run,1}, b::Array{Run,1})
+
+Calculates the union of two sorted arrays of runs. The function assumes that the runs are sorted
+but does not check this.
+"""
 function union(a::Array{Run,1}, b::Array{Run,1})
     res = merge(a, b)
     pack!(res)
     return res
 end
 
+"""
+    union(a::Region, b::Region)
+
+Calculates the union of two regions. This function supports complement regions and uses 
+DeMorgan's rules to eliminate the complement.    
+"""
 function union(a::Region, b::Region)
-    return Region(union(a.runs, b.runs), false)
+    if a.complement && b.complement
+        return Region(intersection(a.runs, b.runs), true)
+    elseif a.complement
+        return Region(difference(a.runs, b.runs), true)
+    elseif b.complement
+        return Region(difference(b.runs, a.runs), true)
+    else
+        return Region(union(a.runs, b.runs), false)
+    end
 end
 
 function intersect!(a::Array{Run,1})
@@ -465,16 +503,42 @@ function intersect!(a::Array{Run,1})
     deleteat!(a, write:size(a,1))
 end
 
+"""
+    intersection(a::Array{Run,1}, b::Array{Run,1})
+
+Calculates the intersection of two sorted arrays of runs. The function assumes that the runs are sorted
+but does not check this.
+"""
 function intersection(a::Array{Run,1}, b::Array{Run,1})
     res = merge(a, b)
     intersect!(res)
     return res
 end
 
+"""
+    intersection(a::Region, b::Region)
+
+Calculates the intersection of two regions. This function supports complement regions and uses 
+DeMorgan's rules to eliminate the complement.    
+"""
 function intersection(a::Region, b::Region)
-    return Region(intersection(a.runs, b.runs), false)
+    if a.complement && b.complement
+        return Region(union(a.runs, b.runs), true)
+    elseif a.complement
+        return Region(difference(b.runs, a.runs), false)
+    elseif b.complement
+        return Region(difference(a.runs, b.runs), false)
+    else
+        return Region(intersection(a.runs, b.runs), false)
+    end
 end
 
+"""
+    difference(a::Array{Run,1}, b::Array{Run,1})
+
+Calculates the difference of two sorted arrays of runs. The function assumes that the runs are sorted
+but does not check this.
+"""
 function difference(a::Array{Run,1}, b::Array{Run,1})
     if size(a, 1) == 0
         return b
@@ -532,8 +596,22 @@ function difference(a::Array{Run,1}, b::Array{Run,1})
     return res
 end
 
+"""
+    difference(a::Region, b::Region)
+
+Calculates the union of two regions. This function supports complement regions and uses 
+DeMorgan's rules to eliminate the complement.    
+"""
 function difference(a::Region, b::Region)
-    return Region(difference(a.runs, b.runs), false)
+    if a.complement && b.complement
+        return Region(difference(b.runs, a.runs), false)
+    elseif a.complement
+        return Region(union(a.runs, b.runs), true)
+    elseif b.complement
+        return Region(intersection(a.runs, b.runs), false)
+    else
+        return Region(difference(a.runs, b.runs), false)
+    end
 end
 
 #=
