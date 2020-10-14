@@ -10,11 +10,13 @@ In order to use the types and functions defined in the Regions package, you must
 julia> using Regions
 ```
 
+Regions can be used for various purposes in machine vision and image processing. Since they provide an efficient run-length encoding of binary images, they avoid the need to touch every pixel when doing binary morphology and thus enable substantial speedup of such operations. Regions are also the basis for binary blob analysis, where the calculation of shape-based features is also substantially accelerated because of the run-length encoding. Finally, regions can be used as the domain of image processing functions.
+
 ## Introduction
 
 A region can be seen as a set of discrete coordinates in the cartesian plane. In fact, the main motivation for the region concept was to model a set of pixel locations for image processing purposes.
 
-A region is respresented with a sorted list of horizontal runs. Runs themselves are represented with a horizontal range and a vertical coordinate.
+A region is represented with a sorted list of horizontal runs. Runs themselves are represented with a horizontal range and a vertical coordinate.
 
 ![Region and runs](region_and_runs.svg)
 
@@ -24,9 +26,6 @@ Here is how this region can be created using the Julia REPL (assuming the origin
 julia> Region([Run(0, 1:4), Run(1, 0:5), Run(2, 1:2), Run(2, 4:6), Run(3, 1:2), Run(3, 5:5), Run(4, 1:2), Run(4, 4:5), Run(5, 2:4)])
 Region(Run[Run(0, 1:4), Run(1, 0:5), Run(2, 1:2), Run(2, 4:6), Run(3, 1:2), Run(3, 5:5), Run(4, 1:2), Run(4, 4:5), Run(5, 2:4)], false)
 ```
-
-A run combines a vertical coordinate with a range of horizontal coordinates.
-
 
 ### Range
 
@@ -44,16 +43,129 @@ julia> (0:99).stop
 
 julia> length(0:99)
 100
+
+julia> length(-50:50)
+101
 ```
 
-The natural sort order of ranges is to sort them by their start:
+A range where the stop is less than the start is considered empty.
 
 ```jldoctest reg
-julia> 0:100 < 1:2
+julia> isempty(0:0)
+false
+
+julia> isempty(1:0)
 true
 ```
 
+The natural sort order of ranges is to sort them by their start.
+
+```jldoctest reg
+julia> 0:100 < 1:101
+true
+
+julia> 0:1 < 1:100
+true
+
+julia> 0:50 < 0:100
+true
+
+julia> isless(0:100, 1:101)
+true
+```
+
+Transposition mirrors a range at the origin.
+
+```jldoctest reg
+julia> transpose(0:100)
+-100:0
+
+julia> -(50:100)
+-100:-50
+
+julia> -transpose(5:10)
+5:10
+```
+
+Translation moves a range by an offset.
+
+```jldoctest reg
+julia> translate(0:100, 50)
+50:150
+
+julia> (10:20) + 30
+40:50
+
+julia> 10 + (20:30)
+30:40
+
+julia> (50:100) - 10
+40:90
+```
+
+You can check whether a value is contained in a range.
+
+```jldoctest reg
+julia> contains(10:20, 10)
+true
+
+julia> contains(10:20, 15)
+true
+
+julia> contains(10:20, 20)
+true
+
+julia> contains(10:20, 9)
+false
+
+julia> 14 ∈ 10:20
+true
+```
+
+Two ranges can overlap or touch.
+
+```jldoctest reg
+julia> isoverlapping(10:20, 5:25)
+true
+
+julia> isoverlapping(0:0, 1:1)
+false
+
+julia> istouching(0:0, 1:1)
+true
+
+julia> istouching(0:0, 2:2)
+false
+```
+
 ### Run
+
+A run combines a vertical coordinate with a range of horizontal coordinates.
+
+The natural sort order of runs is to sort them by their row, then by their columns range.
+
+```jldoctest reg
+julia> Run(0, 0:100) < Run(1, 0:100)
+true
+
+julia> Run(0, 0:100) < Run(0, 1:101)
+true
+```
+
+Transposition mirrors a run at the origin.
+
+```jldoctest reg
+julia> transpose(Run(10, 50:100))
+Run(-50, -100:50)
+
+julia> -(Run(10, 50:100=)
+Run(-10, -100:-50)
+
+julia> -transpose(Run(1, 5:10))
+Run(1, 5:10)
+```
+
+
 
 
 ### Region

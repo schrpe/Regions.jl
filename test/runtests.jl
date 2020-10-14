@@ -39,13 +39,9 @@ using Test
         @test (1:2) - 5 == -4:-3
         @test (1:2) + 5 == 6:7
 
-        @test -(1:2) == -2:-1
-        @test -(-1:0) == 0:1
-        @test -(-(1:2)) == 1:2
-
-        @test Regions.transpose(1:2) == -2:-1
-        @test Regions.transpose(-1:0) == 0:1
-        @test Regions.transpose(Regions.transpose(1:2)) == 1:2
+        @test invert(1:2) == -2:-1
+        @test invert(-1:0) == 0:1
+        @test invert(invert(1:2)) == 1:2
 
         @test !contains(0:-1, 0)
         @test !contains(0:0, -1)

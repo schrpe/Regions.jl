@@ -1,8 +1,8 @@
 """
     Regions
 
-    Main module for Regions.jl - a set of types that model a discrete 
-    2-dimensional region concept.
+Main module for Regions.jl - a set of types that model a discrete 
+2-dimensional region concept.
 
 # Exports
 
@@ -14,50 +14,23 @@ module Regions
 
 #= ------------------------------------------------------------------------
 
-    Run
+    UnitRange{Int64}
 
 ------------------------------------------------------------------------ =#
 
-import Base.isless, Base.transpose, Base.-, Base.+, Base.contains, Base.isempty
-export Run
-export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
-export isempty, isless, minkowski_addition, minkowski_subtraction
+import Base.-, Base.+, Base.contains, Base.∈
+export invert, translate, +, -
+export transpose, contains, isoverlapping, istouching, isclose
+export minkowski_addition, minkowski_subtraction
 export moment00, moment01, moment10
 
 """
-    Run
+    invert(x::UnitRange{Int64})
 
-A run is a (possibly partial) set of consecutive coordinates within a row of a 
-region. It consists of a discrete row coordinate (of type Signed) and a range 
-of discrete column coordinates (of type UnitRange{Int64}).
-
-Runs specify a sort order: one run is smaller than the other if it starts
-before the other run modeling the coordinates from left to right and top to 
-bottom.
+Inverts a range. Inversion mirrors a range at the origin. A range is 
+inverted by reversing and inverting each of its coordinates.
 """
-struct Run
-    row::Integer
-    columns::UnitRange{Int64}
-end
-
-isempty(x::UnitRange{Int64}) = x.stop < x.start
-
-"""
-    isless(x::UnitRange{Int64}, y::UnitRange{Int64})
-
-Compare two ranges according their natural order. The order is determined by
-the start.
-"""
-isless(x::UnitRange{Int64}, y::UnitRange{Int64}) = x.start < y.start
-
-"""
-    transpose(x::UnitRange{Int64})
-
-Transpose a range. Transposition mirrors a range at the origin. A range is 
-transposed by reversing, negating and adding one to each of its coordinates.
-"""
-transpose(x::UnitRange{Int64}) = -x
--(x::UnitRange{Int64}) = -x.stop : -x.start
+invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
 
 """
     translate(x::UnitRange{Int64}, y::Integer)
@@ -75,8 +48,7 @@ translate(x::UnitRange{Int64}, y::Integer) = x + y
 
 Test if range x contains value x.
 """
-contains(x::UnitRange{Int64}, y::Integer) = (y ≥ x.start) && (y ≤ x.stop)
-∈(x::UnitRange{Int64}, y::Integer) = contains(x, y)
+contains(x::UnitRange{Int64}, y::Integer) = y ∈ x
 
 """
     isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64})
@@ -125,13 +97,67 @@ manipulating the range ends.
 """
 minkowski_subtraction(x::UnitRange{Int64}, y::UnitRange{Int64}) = x.start + y.stop : x.stop + y.start
 
-isempty(x::Run) = isempty(x.columns)
 
+#= ------------------------------------------------------------------------
+
+    Run
+
+------------------------------------------------------------------------ =#
+
+import Base.isless, Base.transpose, Base.-, Base.+, Base.contains, Base.isempty
+export Run
+export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
+export isempty, isless, minkowski_addition, minkowski_subtraction
+export moment00, moment01, moment10
+
+"""
+    Run
+
+A run is a (possibly partial) set of consecutive coordinates within a row of a 
+region. It consists of a discrete row coordinate (of type Signed) and a range 
+of discrete column coordinates (of type UnitRange{Int64}).
+
+Runs specify a sort order: one run is smaller than the other if it starts
+before the other run modeling the coordinates from left to right and top to 
+bottom.
+"""
+struct Run
+    row::Integer
+    columns::UnitRange{Int64}
+end
+
+
+
+"""
+    isempty(x::Run)
+
+Discover whether the run is empty.
+
+```jldoctest
+julia> isempty(Run(1, 1:10))
+false
+
+julia> isempty(Run(2, 1:1))
+false
+
+julia> isempty(Run(3, 1:0))
+true
+```
+"""
+isempty(x::Run) = isempty(x.columns)
 
 """
     isless(x::Run, y::Run)
 
 Compare two runs according their natural order.
+
+```jldoctest
+julia> isless(Run(0, 1:10), Run(1, 0:10)
+true
+
+julia> isless(Run(1, 1:10), Run(1, 2:10))
+true
+```
 """
 isless(x::Run, y::Run) = (x.row < y.row) || ((x.row == y.row) && (x.columns < y.columns))
 
