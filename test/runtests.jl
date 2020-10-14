@@ -149,9 +149,9 @@ using Test
         @test -Run(-1, -1:0) == Run(1, 0:1)
         @test -(-(Run(1, 1:2))) == Run(1, 1:2)
 
-        @test Regions.transpose(Run(1, 1:2)) == Run(-1, -2:-1)
-        @test Regions.transpose(Run(-1, -1:0)) == Run(1, 0:1)
-        @test Regions.transpose(Regions.transpose(Run(1, 1:2))) == Run(1, 1:2)
+        @test invert(Run(1, 1:2)) == Run(-1, -2:-1)
+        @test invert(Run(-1, -1:0)) == Run(1, 0:1)
+        @test invert(invert(Run(1, 1:2))) == Run(1, 1:2)
 
         @test !contains(Run(0, 0:-1), 0, -1)
         @test !contains(Run(0, 0:-1), 0, 0)

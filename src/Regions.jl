@@ -104,7 +104,7 @@ minkowski_subtraction(x::UnitRange{Int64}, y::UnitRange{Int64}) = x.start + y.st
 
 ------------------------------------------------------------------------ =#
 
-import Base.isless, Base.transpose, Base.-, Base.+, Base.contains, Base.isempty
+import Base.isempty, Base.isless, Base.transpose, Base.-, Base.+, Base.contains
 export Run
 export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
 export isempty, isless, minkowski_addition, minkowski_subtraction
@@ -126,14 +126,14 @@ struct Run
     columns::UnitRange{Int64}
 end
 
-
-
 """
     isempty(x::Run)
 
 Discover whether the run is empty.
 
 ```jldoctest
+julia> using Regions
+
 julia> isempty(Run(1, 1:10))
 false
 
@@ -151,8 +151,10 @@ isempty(x::Run) = isempty(x.columns)
 
 Compare two runs according their natural order.
 
-```jldoctest
-julia> isless(Run(0, 1:10), Run(1, 0:10)
+```jldoctest reg
+julia> using Regions
+
+julia> isless(Run(0, 1:10), Run(1, 0:10))
 true
 
 julia> isless(Run(1, 1:10), Run(1, 2:10))
@@ -162,16 +164,17 @@ true
 isless(x::Run, y::Run) = (x.row < y.row) || ((x.row == y.row) && (x.columns < y.columns))
 
 """
-    transpose(x::Run)
+    invert(x::Run)
 
-Transpose a run. Transposition mirrors a run at the origin. A range is transposed by negating 
-its row and transposing its columns.
+Invert a run. Inversions mirrors a run at the origin. A run is inverted by negating 
+its row and inverting its columns.
 """
-transpose(x::Run) = -x
--(x::Run) = Run(-x.row, -x.columns)
+invert(x::Run) = -x
+-(x::Run) = Run(-x.row, invert(x.columns))
 
 """
     translate(r::Run, x::Integer, y::Integer)
+    translate(x::Run, y::Array{Int64, 1})
 
 Translate a run. Translation moves a run. A run is translated by adding offsets to its row and 
 columns.

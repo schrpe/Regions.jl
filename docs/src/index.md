@@ -1,6 +1,6 @@
 # Regions.jl
 
-Region.jl defines a set of types that model a discrete 2-dimensional region concept. 
+Regions.jl defines a set of types that model a discrete 2-dimensional region concept. 
 
 ![Example of a region](region.svg)
 
@@ -14,9 +14,9 @@ Regions can be used for various purposes in machine vision and image processing.
 
 ## Introduction
 
-A region can be seen as a set of discrete coordinates in the cartesian plane. In fact, the main motivation for the region concept was to model a set of pixel locations for image processing purposes.
+A region can be seen as a set of discrete coordinates in the cartesian plane. In fact, one of the main motivations for the region concept was to model a set of pixel locations for image processing purposes.
 
-A region is represented with a sorted list of horizontal runs. Runs themselves are represented with a horizontal range and a vertical coordinate.
+A region is represented with a sorted list of horizontal runs. Runs themselves are represented with a horizontal columns range and a vertical row coordinate.
 
 ![Region and runs](region_and_runs.svg)
 
@@ -74,16 +74,13 @@ julia> isless(0:100, 1:101)
 true
 ```
 
-Transposition mirrors a range at the origin.
+Inversion mirrors a range at the origin.
 
 ```jldoctest reg
-julia> transpose(0:100)
+julia> invert(0:100)
 -100:0
 
-julia> -(50:100)
--100:-50
-
-julia> -transpose(5:10)
+julia> invert(invert(5:10))
 5:10
 ```
 
@@ -140,7 +137,17 @@ false
 
 ### Run
 
-A run combines a vertical coordinate with a range of horizontal coordinates.
+A run combines a vertical row coordinate with a range of horizontal columns coordinates.
+
+An empty run is a run whose columns range is empty.
+
+```jldoctest reg
+julia> isempty(Run(0, 0:-1))
+true
+
+julia> isempty(Run(0, 0:100))
+false
+```
 
 The natural sort order of runs is to sort them by their row, then by their columns range.
 
@@ -152,17 +159,27 @@ julia> Run(0, 0:100) < Run(0, 1:101)
 true
 ```
 
-Transposition mirrors a run at the origin.
+Inversion mirrors a run at the origin.
 
 ```jldoctest reg
-julia> transpose(Run(10, 50:100))
-Run(-50, -100:50)
-
-julia> -(Run(10, 50:100=)
+julia> invert(Run(10, 50:100))
 Run(-10, -100:-50)
 
-julia> -transpose(Run(1, 5:10))
+julia> invert(invert(Run(1, 5:10)))
 Run(1, 5:10)
+```
+
+Translation moves a run by horizontal and vertical offsets.
+
+```jldoctest reg
+julia> translate(Run(0, 0:100), 10, 20)
+Run(10, 20:120)
+
+julia> Run(0, 10:20) + [30, 40]
+Run(30, 50:60)
+
+julia> Run(0, 10:20) - [30, 40]
+Run(-30, -30:-20)
 ```
 
 
