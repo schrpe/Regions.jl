@@ -29,6 +29,16 @@ export moment00, moment01, moment10
 
 Inverts a range. Inversion mirrors a range at the origin. A range is 
 inverted by reversing and inverting each of its coordinates.
+
+```jldoctest
+julia> using Regions
+
+julia> invert(5:10)
+-10:-5
+
+julia> invert(invert(0:100))
+0:100
+```
 """
 invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
 
@@ -37,6 +47,22 @@ invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
 
 Translate a range. Translation moves a range. A range is translated by adding 
 an offset to each of its coordinates.
+
+```jldoctest
+julia> using Regions
+
+julia> translate(0:10, 5)
+5:15
+
+julia> (5:15) + 10
+15:25
+
+julia> 10 + (5:15)
+15:25
+
+julia> (5:15) - 10
+-5:5
+```
 """
 translate(x::UnitRange{Int64}, y::Integer) = x + y
 +(x::UnitRange{Int64}, y::Integer) = x.start + y : x.stop + y
@@ -47,6 +73,22 @@ translate(x::UnitRange{Int64}, y::Integer) = x + y
     contains(x::UnitRange{Int64}, y::Integer)
 
 Test if range x contains value x.
+
+```jldoctest
+julia> using Regions
+
+julia> contains(0:10, 5)
+true
+
+julia> contains(0:10, 15)
+false
+
+julia> 0 ∈ 0:10
+true
+
+julia> 100 ∈ 0:10
+false
+```
 """
 contains(x::UnitRange{Int64}, y::Integer) = y ∈ x
 
@@ -54,6 +96,16 @@ contains(x::UnitRange{Int64}, y::Integer) = y ∈ x
     isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64})
 
 Test if two ranges overlap.
+
+```jldoctest
+julia> using Regions
+
+julia> isoverlapping(0:10, 5:15)
+true
+
+julia> isoverlapping(0:10, 20:30)
+false
+```
 """
 isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64}) = (x < y) ? (x.stop ≥ y.start) : (y.stop ≥ x.start)
 
@@ -61,6 +113,16 @@ isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64}) = (x < y) ? (x.stop ≥ 
     istouching(x::UnitRange{Int64}, y::UnitRange{Int64})
 
 Test if two ranges touch.
+
+```jldoctest
+julia> using Regions
+
+julia> istouching(0:10, 11:21)
+true
+
+julia> istouching(0:10, 12:22)
+false
+```
 """
 istouching(x::UnitRange{Int64}, y::UnitRange{Int64}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
 
@@ -168,6 +230,16 @@ isless(x::Run, y::Run) = (x.row < y.row) || ((x.row == y.row) && (x.columns < y.
 
 Invert a run. Inversions mirrors a run at the origin. A run is inverted by negating 
 its row and inverting its columns.
+
+```jldoctest reg
+julia> using Regions
+
+julia> invert(Run(1, 20:30))
+Run(-1, -30:-20)
+
+julia> -Run(-1, -30:-20)
+Run(1, 20:30)
+```
 """
 invert(x::Run) = -x
 -(x::Run) = Run(-x.row, invert(x.columns))
@@ -178,15 +250,35 @@ invert(x::Run) = -x
 
 Translate a run. Translation moves a run. A run is translated by adding offsets to its row and 
 columns.
+
+```jldoctest reg
+julia> using Regions
+
+julia> translate(Run(1, 20:30), 10, 20)
+Run(21, 30:40)
+
+julia> translate(Run(1, 2:3), [10, 20])
+Run(21, 12:13)
+
+julia> Run(1, 2:3) + [10, 20]
+Run(21, 12:13)
+
+julia> [1, 2] + Run(0, 0:10)
+Run(2, 1:11)
+
+julia> Run(0, 0:100) - [5, 25]
+Run(-25, -5:95)
+```
 """
-translate(r::Run, x::Integer, y::Integer) = r + [x, y]
-translate(x::Run, y::Array{Int64, 1}) = x + y
-+(x::Run, y::Array{Int64, 1}) = Run(x.row + y[1], x.columns + y[2])
-+(x::Array{Int64, 1}, y::Run) = Run(y[1] + x.row, y[2] + x.columns)
--(x::Run, y::Array{Int64, 1}) = Run(x.row - y[1], x.columns - y[2])
+translate(a::Run, x::Integer, y::Integer) = a + [x, y]
+translate(a::Run, b::Array{Int64, 1}) = a + b
++(a::Run, b::Array{Int64, 1}) = Run(a.row + b[2], a.columns + b[1])
++(a::Array{Int64, 1}, b::Run) = Run(a[2] + b.row, a[1] + b.columns)
+-(a::Run, b::Array{Int64, 1}) = Run(a.row - b[2], a.columns - b[1])
 
 """
     contains(r::Run, x::Integer, y::Integer)
+    contains(r::Run, y::Array{Int64, 1})
 
 Test if run x contains position x, y.
 """

@@ -173,13 +173,13 @@ Translation moves a run by horizontal and vertical offsets.
 
 ```jldoctest reg
 julia> translate(Run(0, 0:100), 10, 20)
-Run(10, 20:120)
+Run(20, 10:110)
 
 julia> Run(0, 10:20) + [30, 40]
-Run(30, 50:60)
+Run(40, 40:50)
 
 julia> Run(0, 10:20) - [30, 40]
-Run(-30, -30:-20)
+Run(-40, -20:-10)
 ```
 
 

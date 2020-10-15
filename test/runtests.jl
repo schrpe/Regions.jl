@@ -140,10 +140,10 @@ using Test
         @test Run(0, 1:2) ≥ Run(0, 0:1)
         @test Run(0, 0:1) ≥ Run(0, 0:1)
 
-        @test translate(Run(1, 1:2), [-5, -6]) == Run(-4, -5:-4)
-        @test translate(Run(1, 1:2), [5, 6]) == Run(6, 7:8)
-        @test Run(1, 1:2) - [5, 6] == Run(-4, -5:-4)
-        @test Run(1, 1:2) + [5, 6] == Run(6, 7:8)
+        @test translate(Run(1, 1:2), [-5, -6]) == Run(-5, -4:-3)
+        @test translate(Run(1, 1:2), [5, 6]) == Run(7, 6:7)
+        @test Run(1, 1:2) - [5, 6] == Run(-5, -4:-3)
+        @test Run(1, 1:2) + [5, 6] == Run(7, 6:7)
 
         @test -Run(1, 1:2) == Run(-1, -2:-1)
         @test -Run(-1, -1:0) == Run(1, 0:1)
