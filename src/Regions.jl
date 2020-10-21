@@ -21,7 +21,6 @@ module Regions
 import Base.-, Base.+, Base.contains, Base.∈
 export invert, translate, +, -
 export transpose, contains, isoverlapping, istouching, isclose
-export minkowski_addition, minkowski_subtraction
 export moment00, moment01, moment10
 
 """
@@ -137,28 +136,6 @@ If distance > 1 this is testing of closeness.
 """
 isclose(x::UnitRange{Int64}, y::UnitRange{Int64}, distance::Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)
 
-"""
-    minkowski_addition(x::UnitRange{Int64}, y::UnitRange{Int64})
-
-Minkowski addition for two ranges.
-
-This is a building block for region-based morphology. It avoids
-touching each item of a range and calculates the result only by
-manipulating the range ends.
-"""
-minkowski_addition(x::UnitRange{Int64}, y::UnitRange{Int64}) = x.start + y.start : x.stop + y.stop
-
-"""
-    minkowski_subtraction(x::UnitRange{Int64}, y::UnitRange{Int64})
-
-Minkowski subtraction for two ranges.
-
-This is a building block for region-based morphology. It avoids
-touching each item of a range and calculates the result only by
-manipulating the range ends.
-"""
-minkowski_subtraction(x::UnitRange{Int64}, y::UnitRange{Int64}) = x.start + y.stop : x.stop + y.start
-
 
 #= ------------------------------------------------------------------------
 
@@ -211,7 +188,8 @@ isempty(x::Run) = isempty(x.columns)
 """
     isless(x::Run, y::Run)
 
-Compare two runs according their natural order.
+Compare two runs according to their natural sort order. First, their rows are compared,
+and if they are equal, their column ranges are compared.
 
 ```jldoctest reg
 julia> using Regions
@@ -246,7 +224,7 @@ invert(x::Run) = -x
 
 """
     translate(r::Run, x::Integer, y::Integer)
-    translate(x::Run, y::Array{Int64, 1})
+    translate(r::Run, a::Array{Int64, 1})
 
 Translate a run. Translation moves a run. A run is translated by adding offsets to its row and 
 columns.
@@ -278,13 +256,13 @@ translate(a::Run, b::Array{Int64, 1}) = a + b
 
 """
     contains(r::Run, x::Integer, y::Integer)
-    contains(r::Run, y::Array{Int64, 1})
+    contains(r::Run, a::Array{Int64, 1})
 
-Test if run x contains position x, y.
+Test if run r contains position (x, y).
 """
 contains(r::Run, x::Integer, y::Integer) = (r.row == y) && contains(r.columns, x)
-contains(x::Run, y::Array{Int64, 1}) = contains(r, y[1], y[2])
-∈(x::Run, y::Array{Int64, 1}) = contains(x, y)
+contains(r::Run, a::Array{Int64, 1}) = contains(r, a[1], a[2])
+∈(r::Run, a::Array{Int64, 1}) = contains(r, a)
 
 """
     isoverlapping(x::Run, y::Run)
@@ -333,6 +311,7 @@ touching each item of a range and calculates the result only by
 manipulating the range ends.
 """
 minkowski_subtraction(x::Run, y::Run) = Run(x.row + y.row, x.start + y.stop : x.stop + y.start)
+# TODO check minkowski subtraction, code seems to be wrong
 
 #=
 The following functions should go into blob module
@@ -364,7 +343,7 @@ export moment00, moment01, moment10
 """
     Region
 
-A region is a 
+A region is a discrete set of coordinates in two-dimensional euclidean space.
 """
 struct Region
     runs::Array{Run,1}
@@ -389,31 +368,24 @@ Create a copy of a region.
 copy(x::Region) = Region(copy(x.runs), x.complement)
 
 """
-    transpose(x::Region)
+    invert(x::Region)
 
-Transpose a region. Transposition mirrors a region at the origin. 
+Invert a region. Inversion mirrors a region at the origin. A region is inverted
+by inverting each of its runs.
 """
-function transpose(x::Region)
-    result = Region([], x.complement)
+function invert(x::Region)
+    result = Region([], x.complement) # TODO how to reserve space?
     # iterating backwards maintains the correct sort order of the runs
     for i in [size(x.runs)[1]:-1:1]
         append!(result.runs, -x.runs[i])
     end
     return result
 end
--(x::Region) = transpose(x)
-
-"""
-    contains(r::Region, x::Integer, y::Integer)
-
-Test if region x contains position x, y.
-"""
-contains(r::Region, x::Integer, y::Integer) = r.complement ? !any(run -> contains(run, x, y), r.runs) : any(run -> contains(run, x, y), r.runs)
-contains(x::Region, y::Array{Int64, 1}) = contains(x, y[1], y[2])
-∈(x::Region, y::Array{Int64, 1}) = contains(x, y)
+-(x::Region) = invert(x)
 
 """
     translate(r::Region, x::Integer, y::Integer)
+    translate(r::Region, a::Array{Int64, 1})
 
 Translate a region. Translation moves a region. A region is translated by translating each 
 of it's runs. 
@@ -421,7 +393,7 @@ of it's runs.
 function translate(r::Region, x::Integer, y::Integer)
     return translate!(copy(r), x, y)
 end
-translate(x::Region, y::Array{Int64, 1}) = translate(x, y[1], y[2])
+translate(r::Region, a::Array{Int64, 1}) = translate(r, a[1], a[2])
 +(x::Region, y::Array{Int64, 1}) = translate(x, y[1], y[2])
 +(x::Array{Int64, 1}, y::Region) = translate(y, x[1], x[2])
 -(x::Region, y::Array{Int64, 1}) = translate(x, -y[1], -y[2])
@@ -431,6 +403,16 @@ function translate!(r::Region, x::Integer, y::Integer)
     end
     return r
 end
+
+"""
+    contains(r::Region, x::Integer, y::Integer)
+    contains(r::Region, a::Array{Int64, 1})
+
+Test if region r contains position (x, y).
+"""
+contains(r::Region, x::Integer, y::Integer) = r.complement ? !any(run -> contains(run, x, y), r.runs) : any(run -> contains(run, x, y), r.runs)
+contains(r::Region, a::Array{Int64, 1}) = contains(r, a[1], a[2])
+∈(r::Region, a::Array{Int64, 1}) = contains(r, a)
 
 function left(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
