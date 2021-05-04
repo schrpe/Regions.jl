@@ -1,11 +1,15 @@
 # Regions.jl
 
-Regions.jl defines a set of types that model a discrete 2-dimensional region concept. 
+Regions.jl defines a set of types and functions that model a discrete 2-dimensional region concept. 
 
 ![Example of a region](region.svg)
 
 In order to use the types and functions defined in the Regions package, you must first install it with the package manager and then make it known to your module:
 
+```
+julia> using Pkg
+julia> using Pkg.add(path="D:/!julia/Regions")
+```
 ```jldoctest reg
 julia> using Regions
 ```

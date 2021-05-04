@@ -47,6 +47,9 @@ invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
 Translate a range. Translation moves a range. A range is translated by adding 
 an offset to each of its coordinates.
 
+In addition to the translate method, you can also use the + or - operators
+to translate a range.
+
 ```jldoctest
 julia> using Regions
 
@@ -72,6 +75,8 @@ translate(x::UnitRange{Int64}, y::Integer) = x + y
     contains(x::UnitRange{Int64}, y::Integer)
 
 Test if range x contains value x.
+
+In addition to the contains method, you can also use the ∈ operator.
 
 ```jldoctest
 julia> using Regions
@@ -209,6 +214,8 @@ isless(x::Run, y::Run) = (x.row < y.row) || ((x.row == y.row) && (x.columns < y.
 Invert a run. Inversions mirrors a run at the origin. A run is inverted by negating 
 its row and inverting its columns.
 
+In addition to the invert method, you can also use the unary - operator.
+
 ```jldoctest reg
 julia> using Regions
 
@@ -228,6 +235,9 @@ invert(x::Run) = -x
 
 Translate a run. Translation moves a run. A run is translated by adding offsets to its row and 
 columns.
+
+In addition to the translate method, you can also use the + or - operators
+to translate a run.
 
 ```jldoctest reg
 julia> using Regions
@@ -377,7 +387,7 @@ function invert(x::Region)
     result = Region([], x.complement) # TODO how to reserve space?
     # iterating backwards maintains the correct sort order of the runs
     for i in [size(x.runs)[1]:-1:1]
-        append!(result.runs, -x.runs[i])
+        push!(result.runs, -x.runs[i])
     end
     return result
 end
@@ -931,5 +941,36 @@ function moment01(x::Region)
 end
 
 
+#=
+The following functions should go into blob or thresholding module
+=#
+
+function threshold(image, threshold)
+    region = Region([], false) # TODO how to reserve space?    
+
+    for row=1:size(image, 1)
+        inside_object = false
+        start_column = 0
+        for column=1:size(image, 2)
+            if (image[row, column] > threshold) # predicate
+                if !inside_object
+                    inside_object = true
+                    start_column = column
+                end
+            else
+                if inside_object
+                    inside_object = false
+                    push!(region.runs, Run(row, start_column:(column-1)))
+                end
+            end
+        end
+        # if still inside at the end of a line...
+        if inside_object
+            push!(region.runs, Run(row, start_column:size(image, 2)))
+        end
+    end
+
+    return region
+end
 
 end # module
