@@ -1,4 +1,11 @@
-# Regions.jl
+```@meta
+CurrentModule = Regions
+```
+
+# Regions
+
+Documentation for [Regions](https://github.com/schrpe/Regions.jl).
+
 
 Regions.jl defines a set of types and functions that model a discrete 2-dimensional region concept. 
 

@@ -1,15 +1,23 @@
-using Documenter
 using Regions
+using Documenter
 
-makedocs(
-    sitename = "Regions",
-    format = Documenter.HTML(),
-    modules = [Regions]
+DocMeta.setdocmeta!(Regions, :DocTestSetup, :(using Regions); recursive=true)
+
+makedocs(;
+    modules=[Regions],
+    authors="schrpe",
+    repo="https://github.com/schrpe/Regions.jl/blob/{commit}{path}#{line}",
+    sitename="Regions.jl",
+    format=Documenter.HTML(;
+        prettyurls=get(ENV, "CI", "false") == "true",
+        canonical="https://schrpe.github.io/Regions.jl",
+        assets=String[],
+    ),
+    pages=[
+        "Home" => "index.md",
+    ],
 )
 
-# Documenter can also automatically deploy documentation to gh-pages.
-# See "Hosting Documentation" and deploydocs() in the Documenter manual
-# for more information.
-#=deploydocs(
-    repo = "<repository url>"
-)=#
+deploydocs(;
+    repo="github.com/schrpe/Regions.jl",
+)

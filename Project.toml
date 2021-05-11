@@ -1,7 +1,13 @@
 name = "Regions"
-uuid = "1b62bce6-8bf5-4a23-a3e2-7fb94fb2c16a"
+uuid = "4e3eb3bd-530d-473f-987b-017f501eadde"
 authors = ["schrpe"]
 version = "0.1.0"
 
-[deps]
+[compat]
+julia = "1.5"
+
+[extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
