@@ -4,7 +4,7 @@ using Test
 @testset "Regions" begin
 
     @testset "Range" begin
-        @test (0:-1).start == 10
+        @test (0:-1).start == 0
         @test (0:-1).stop == -1
         @test length(0:-1) == 0
         @test isempty(0:-1)
