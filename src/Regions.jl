@@ -21,7 +21,6 @@ module Regions
 import Base.-, Base.+, Base.contains, Base.∈
 export invert, translate, +, -
 export transpose, contains, isoverlapping, istouching, isclose
-export moment00, moment01, moment10
 
 """
     invert(x::UnitRange{Int64})
@@ -152,7 +151,6 @@ import Base.isempty, Base.isless, Base.transpose, Base.-, Base.+, Base.contains
 export Run
 export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
 export isempty, isless, minkowski_addition, minkowski_subtraction
-export moment00, moment01, moment10
 
 """
     Run
@@ -322,20 +320,6 @@ manipulating the range ends.
 """
 minkowski_subtraction(x::Run, y::Run) = Run(x.row + y.row, x.start + y.stop : x.stop + y.start)
 # TODO check minkowski subtraction, code seems to be wrong
-
-#=
-The following functions should go into blob module
-=#
-
-moment00(x::Run) = length(x.columns)
-
-function moment10(x::Run)
-    n = x.columns.stop
-    j = x.columns.start
-    return (n * (n + 1) - (j - 1) * j) / 2.0
-end
-
-moment01(x::Run) = x.row * length(x.columns)
 
 
 #= ------------------------------------------------------------------------
@@ -909,35 +893,6 @@ and the eroded region. The structuring element should be a region that is center
 """
 function morphgradient(a::Region, b::Region)
     return difference(dilation(a, b), erosion(a, b))
-end
-
-
-#=
-The following functions should go into blob module
-=#
-
-function moment00(x::Region) 
-    accu = 0
-    for r in x.runs
-        accu += moment00(r)
-    end
-    return accu
-end
-
-function moment10(x::Region) 
-    accu = 0
-    for r in x.runs
-        accu += moment10(r)
-    end
-    return accu
-end
-
-function moment01(x::Region) 
-    accu = 0
-    for r in x.runs
-        accu += moment01(r)
-    end
-    return accu
 end
 
 
