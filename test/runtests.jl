@@ -101,6 +101,8 @@ using Test
 
     @testset "Run" begin
         @test Run(0, 0:0).row == 0
+        @test Run(0, 0:0).columns.start == 0
+        @test Run(0, 0:0).columns.stop == 0
 
         @test Run(0, 0:-1).columns == 0:-1
         @test Run(0, 0:-1).columns.start == 0
@@ -283,6 +285,43 @@ using Test
 
     end # "Run"
 
+    @testset "Region" begin
+        @test length(Region(Run[]).runs) == 0
 
+        @test length(Region([Run(0, 0:0)]).runs) == 1
+        @test Region([Run(0, 0:0)]).runs[1].row == 0
+        @test Region([Run(0, 0:0)]).runs[1].columns.start == 0
+        @test Region([Run(0, 0:0)]).runs[1].columns.stop == 0
+
+        @test length(Region([Run(1, 2:3)]).runs) == 1
+        @test Region([Run(1, 2:3)]).runs[1].row == 1
+        @test Region([Run(1, 2:3)]).runs[1].columns.start == 2
+        @test Region([Run(1, 2:3)]).runs[1].columns.stop == 3
+
+        @test Region([Run(0, 0:0)], false) == Region([Run(0, 0:0)], false)
+        @test Region([Run(0, 0:0)], true) == Region([Run(0, 0:0)], true)
+        @test Region([Run(0, 0:0)], false) != Region([Run(0, 0:0)], true)
+        @test Region([Run(0, 0:0)], true) != Region([Run(0, 0:0)], false)
+        @test Region([Run(0, 0:0)], false) != Region([Run(1, 2:3)], true)
+
+        @test Region([Run(0, 0:0)], false) == copy(Region([Run(0, 0:0)], false))
+
+        @test invert(Region([Run(0, 0:0)])).runs[1].row == 0
+        @test invert(Region([Run(0, 0:0)])).runs[1].columns.start == 0
+        @test invert(Region([Run(0, 0:0)])).runs[1].columns.stop == 0
+        @test invert(Region([Run(1, 2:3)])).runs[1].row == -1
+        @test invert(Region([Run(1, 2:3)])).runs[1].columns.start == -3
+        @test invert(Region([Run(1, 2:3)])).runs[1].columns.stop == -2
+        @test invert(invert(Region([Run(1, 2:3)]))).runs[1].row == 1
+        @test invert(invert(Region([Run(1, 2:3)]))).runs[1].columns.start == 2
+        @test invert(invert(Region([Run(1, 2:3)]))).runs[1].columns.stop == 3
+        @test (-Region([Run(1, 2:3)])).runs[1].row == -1
+        @test (-Region([Run(1, 2:3)])).runs[1].columns.start == -3
+        @test (-Region([Run(1, 2:3)])).runs[1].columns.stop == -2
+        @test (- -Region([Run(1, 2:3)])).runs[1].row == 1
+        @test (- -Region([Run(1, 2:3)])).runs[1].columns.start == 2
+        @test (- -Region([Run(1, 2:3)])).runs[1].columns.stop == 3
+
+    end # "Region"
 
 end

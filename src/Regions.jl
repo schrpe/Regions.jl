@@ -229,7 +229,7 @@ invert(x::Run) = -x
 
 """
     translate(r::Run, x::Integer, y::Integer)
-    translate(r::Run, a::Array{Int64, 1})
+    translate(r::Run, a::Vector{Int64})
 
 Translate a run. Translation moves a run. A run is translated by adding offsets to its row and 
 columns.
@@ -257,20 +257,20 @@ Run(-25, -5:95)
 ```
 """
 translate(a::Run, x::Integer, y::Integer) = a + [x, y]
-translate(a::Run, b::Array{Int64, 1}) = a + b
-+(a::Run, b::Array{Int64, 1}) = Run(a.row + b[2], a.columns + b[1])
-+(a::Array{Int64, 1}, b::Run) = Run(a[2] + b.row, a[1] + b.columns)
--(a::Run, b::Array{Int64, 1}) = Run(a.row - b[2], a.columns - b[1])
+translate(a::Run, b::Vector{Int64}) = a + b
++(a::Run, b::Vector{Int64}) = Run(a.row + b[2], a.columns + b[1])
++(a::Vector{Int64}, b::Run) = Run(a[2] + b.row, a[1] + b.columns)
+-(a::Run, b::Vector{Int64}) = Run(a.row - b[2], a.columns - b[1])
 
 """
     contains(r::Run, x::Integer, y::Integer)
-    contains(r::Run, a::Array{Int64, 1})
+    contains(r::Run, a::Vector{Int64})
 
 Test if run r contains position (x, y).
 """
 contains(r::Run, x::Integer, y::Integer) = (r.row == y) && contains(r.columns, x)
-contains(r::Run, a::Array{Int64, 1}) = contains(r, a[1], a[2])
-∈(r::Run, a::Array{Int64, 1}) = contains(r, a)
+contains(r::Run, a::Vector{Int64}) = contains(r, a[1], a[2])
+∈(r::Run, a::Vector{Int64}) = contains(r, a)
 
 """
     isoverlapping(x::Run, y::Run)
@@ -287,7 +287,9 @@ Test if two runs touch.
 istouching(x::Run, y::Run) = abs(x.row - y.row) ≤ 1 && istouching(x.columns, y.columns)
 
 """
-    isclose(x::Run, y::Run, distance::Integer)
+    isclose(a::Run, b::Run, x::Integer, y::Integer)
+    isclose(a::Run, b::Run, d::Integer)
+    isclose(x::Run, y::Run, distance::Vector[Int64])
 
 Test if two runs are close.
 
@@ -296,7 +298,8 @@ If distance == 1 this is the same as istouching().
 If distance > 1 this is testing of closeness.
 """
 isclose(a::Run, b::Run, x::Integer, y::Integer) = abs(a.row - b.row) <= y && isclose(a.columns, b.columns, x)
-isclose(a::Run, b::Run, distance::Array{Int64, 1}) = isclose(a, b, distance[1], distance[2])
+isclose(a::Run, b::Run, d::Integer) = isclose(a, b, d, d)
+isclose(a::Run, b::Run, distance::Vector{Int64}) = isclose(a, b, distance[1], distance[2])
 
 """
     minkowski_addition(x::Run, y::Run)
@@ -333,18 +336,21 @@ export Region
 export copy, transpose, -, contains, translate, translate!, left, right, bottom, top
 export center, center!, merge, union, intersection, difference
 export moment00, moment01, moment10
+export binarize
 
 """
     Region
 
 A region is a discrete set of coordinates in two-dimensional euclidean space.
+
+A region consists of zero or more runs, which are sorted in ascending order.
 """
 struct Region
-    runs::Array{Run,1}
+    runs::Vector{Run}
     complement::Bool
 end
 
-Region(runs::Array{Run,1}) = Region(runs, false)
+Region(runs::Vector{Run}) = Region(runs, false)
 
 """
     ==(a::Region, b::Region)
@@ -368,13 +374,14 @@ Invert a region. Inversion mirrors a region at the origin. A region is inverted
 by inverting each of its runs.
 """
 function invert(x::Region)
-    result = Region([], x.complement) # TODO how to reserve space?
+    result = Region(Run[], x.complement) # TODO how to reserve space?
     # iterating backwards maintains the correct sort order of the runs
-    for i in [size(x.runs)[1]:-1:1]
+    for i in size(x.runs)[1]:-1:1
         push!(result.runs, -x.runs[i])
     end
     return result
 end
+
 -(x::Region) = invert(x)
 
 """
@@ -898,16 +905,17 @@ end
 
 #=
 The following functions should go into blob or thresholding module
+TODO: use a predicate
 =#
 
-function threshold(image, threshold)
-    region = Region([], false) # TODO how to reserve space?    
+function binarize(image, t)
+    region = Region(Run[], false) # TODO how to reserve space?    
 
     for row=1:size(image, 1)
         inside_object = false
         start_column = 0
         for column=1:size(image, 2)
-            if (image[row, column] > threshold) # predicate
+            if (image[row, column] > t) # predicate
                 if !inside_object
                     inside_object = true
                     start_column = column
@@ -926,6 +934,91 @@ function threshold(image, threshold)
     end
 
     return region
+end
+
+"""
+    connection(region::Region, dx::Integer, dy::Integer)
+
+This function splits a region into connected objects that are returned as a vector of regions.
+"""
+function connection(region::Region, dx::Integer, dy::Integer)
+
+    function uf_find_root(ufa, x)
+        i = x
+        while ufa[i] >= 0
+            i = ufa[i]
+        end
+        return i
+    end
+
+    function uf_union(ufa, x, y)
+        i = uf_find_root(ufa, x)
+        j = uf_find_root(ufa, y)
+
+        ti = x
+        tmp = -1
+        while ufa[ti] >= 0
+            tmp = ti
+            ti = ufa[ti]
+            ufa[tmp] = i
+        end
+
+        ti = y
+        tmp = -1
+        while ufa[ti] >= 0
+            tmp = ti
+            ti = ufa[ti]
+            ufa[tmp] = j
+        end
+
+        not_same_tree = i != j
+
+        if not_same_tree
+            ## this maintains the scan-order of the regions in the result
+            if i < j
+                ufa[j] = i
+            else
+                ufa[i] = j
+            end
+        end
+
+        return not_same_tree
+
+    end
+
+    ## union_find: indexed by chord index in r.chords()
+    ##
+    ## value:
+    ## <= -1:  this node is a root with abs(val) indicating tree depth of the associated tree
+    ## >= 0 : index index (in union_find) of parent  
+
+    union_find = [-1 for _ = 1:length(region.runs)]
+
+    run_index = 1
+
+    ## see ngi::chord::are_chords_close; this is required for 4-connectivity
+    dy = max(1, dy)
+    for run in region.runs
+        next_run_index = run_index + 1
+        while next_run_index <= length(region.runs) &&
+            region.runs[next_run_index].row <= run.row + dy
+            if is_close(run, region.runs[next_run_index], dx, dy)
+                uf_union(union_find, run_index, next_run_index)
+            end
+            next_run_inde += 1
+        end
+        run_index += 1
+    end
+
+    ## Make contiguous labels for the roots: store a negative value in the union_find array
+    ## at the root location:
+    ##    -1 <-> region 0 
+    ##    -2 <-> region 1 
+    ## ....
+    ## Also counts the # of roots (i.e. number of connected components).
+
+
+
 end
 
 end # module
