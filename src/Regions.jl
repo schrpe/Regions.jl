@@ -335,8 +335,8 @@ import Base.copy, Base.-, Base.union, Base.==
 export Region
 export copy, transpose, -, contains, translate, translate!, left, right, bottom, top
 export complement, complement!
-export center, center!, union, intersection, difference
-export moment00, moment01, moment10
+export left, top, right, bottom, center, center!
+export union, intersection, difference
 export binarize
 
 """
@@ -419,8 +419,13 @@ contains(r::Region, x::Integer, y::Integer) = r.complement ? !any(run -> contain
 contains(r::Region, a::Array{Int64, 1}) = contains(r, a[1], a[2])
 ∈(r::Region, a::Array{Int64, 1}) = contains(r, a)
 
+"""
+    left(x::Region)
 
-## todo move to blobanalysis
+Calculates the leftmost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
 function left(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
@@ -431,6 +436,30 @@ function left(r::Region)
     return v
 end
 
+"""
+    top(x::Region)
+
+Calculates the topmost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
+function top(r::Region)
+    @assert !r.complement "cannot calculate for infinite (complement) regions"
+    @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
+    v = r.runs[1].row
+    for i in r.runs
+        v = max(v, i.row)
+    end
+    return v
+end
+
+"""
+    right(x::Region)
+
+Calculates the rightmost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
 function right(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
@@ -441,22 +470,19 @@ function right(r::Region)
     return v
 end
 
+"""
+    bottom(x::Region)
+
+Calculates the bottommost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
 function bottom(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
     v = r.runs[1].row
     for i in r.runs
         v = min(v, i.row)
-    end
-    return v
-end
-
-function top(r::Region)
-    @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
-    v = r.runs[1].row
-    for i in r.runs
-        v = max(v, i.row)
     end
     return v
 end
