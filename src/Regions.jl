@@ -334,7 +334,8 @@ minkowski_subtraction(x::Run, y::Run) = Run(x.row + y.row, x.start + y.stop : x.
 import Base.copy, Base.-, Base.union, Base.==
 export Region
 export copy, transpose, -, contains, translate, translate!, left, right, bottom, top
-export center, center!, merge, union, intersection, difference
+export complement, complement!
+export center, center!, union, intersection, difference
 export moment00, moment01, moment10
 export binarize
 
@@ -369,9 +370,11 @@ copy(x::Region) = Region(copy(x.runs), x.complement)
 
 """
     invert(x::Region)
+    -(x::Region)
 
 Invert a region. Inversion mirrors a region at the origin. A region is inverted
-by inverting each of its runs.
+by inverting each of its runs. Since the runs of a region are sorted by their row and
+column coordinates, the order of the runs is inversed as well.
 """
 function invert(x::Region)
     result = Region(Run[], x.complement) # TODO how to reserve space?
@@ -386,24 +389,25 @@ end
 
 """
     translate(r::Region, x::Integer, y::Integer)
-    translate(r::Region, a::Array{Int64, 1})
+    translate(r::Region, a::Vector{Int64})
 
 Translate a region. Translation moves a region. A region is translated by translating each 
-of it's runs. 
+of its runs. 
 """
 function translate(r::Region, x::Integer, y::Integer)
     return translate!(copy(r), x, y)
 end
-translate(r::Region, a::Array{Int64, 1}) = translate(r, a[1], a[2])
-+(x::Region, y::Array{Int64, 1}) = translate(x, y[1], y[2])
-+(x::Array{Int64, 1}, y::Region) = translate(y, x[1], x[2])
--(x::Region, y::Array{Int64, 1}) = translate(x, -y[1], -y[2])
+translate(r::Region, d::Vector{Int64}) = translate(r, d[1], d[2])
++(x::Region, y::Vector{Int64}) = translate(x, y[1], y[2])
++(x::Vector{Int64}, y::Region) = translate(y, x[1], x[2])
+-(x::Region, y::Vector{Int64}) = translate(x, -y[1], -y[2])
 function translate!(r::Region, x::Integer, y::Integer)
     for i in [1, size(r.runs)[1]]
         r.runs[i] = translate(r.runs[i], x, y)
     end
     return r
 end
+translate!(r::Region, d::Vector{Int64}) = translate!(r, d[1], d[2])
 
 """
     contains(r::Region, x::Integer, y::Integer)
@@ -415,6 +419,8 @@ contains(r::Region, x::Integer, y::Integer) = r.complement ? !any(run -> contain
 contains(r::Region, a::Array{Int64, 1}) = contains(r, a[1], a[2])
 ∈(r::Region, a::Array{Int64, 1}) = contains(r, a)
 
+
+## todo move to blobanalysis
 function left(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
@@ -476,18 +482,25 @@ end
 """
     complement(x::Region)
 
-Calculates the set-theoretic complement of a region.   
+Calculates the set-theoretic complement of a region.
+
+With a non-complemented region, the runs specify the contained pixels, i.e. they specify
+what is included within the region. With a complemented region, the runs specify the
+non-contained pixels, i.e. they specify what is not included within the region.
 """
 complement(x::Region) = Region(copy(x.runs), !x.complement)
 
 """
-    merge(a::Array{Run,1}, b::Array{Run,1})
+    merge(a::Vector{Run}, b::Vector{Run})
 
 Merge sorted vectors `a` and `b`. Assumes that `a` and `b` are sorted 
 and does not check whether `a` or `b` are sorted. 
+
+merge is not exported, since its basic usage is within this file and it conflicts with
+a definition in Base.
 """
-function merge(a::Array{Run,1}, b::Array{Run,1})
-    res = Array{Run,1}(undef, 0)
+function merge(a::Vector{Run}, b::Vector{Run})
+    res = Run[]
     i = 1
     j = 1
     while i <= size(a, 1)
@@ -514,47 +527,55 @@ function merge(a::Array{Run,1}, b::Array{Run,1})
 end
 
 """
-    sort(a::Array{Run, 1})
+    sort(a::Vector{Run})
 
 Variant of sort that returns a sorted copy of a leaving a itself unmodified. This ensures that
 runs are sorted after an operation that might have destroyed the sort order, such as 
 downsampling.
 """
-sort(a::Array{Run,1}) = sort(a)
+sort(a::Vector{Run}) = sort(a)
 
 
 """
-    sort!(a::Array{Run, 1})
+    sort!(a::Vector{Run})
 
 Sort the vector a in place. This ensures that runs are sorted after an operation that might 
 have destroyed the sort order, such as downsampling.
 """
-sort!(a::Array{Run,1}) = sort!(a)
+sort!(a::Vector{Run}) = sort!(a)
 
-function pack!(a::Array{Run,1})
+"""
+    pack!(a::Vector{Run})
+
+Packs runs together. pack! is not exported, since its basic usage is within this file as a 
+building block for union.
+"""
+function pack!(a::Vector{Run})
     read = 1
     write = 1
-    while read <= size(a, 1)
+
+    while read <= size(a)[1]
         a[write] = a[read]
-        read = read+1
-        while read <= size(a, 1) && a[write].row == a[read].row && a[write].columns.stop > a[read].columns.start
+        read += 1
+
+        while read <= size(a)[1] && a[write].row == a[read].row && a[write].columns.stop + 1 >= a[read].columns.start
             if a[read].columns.stop > a[write].columns.stop
-                a[write].columns.stop = a[read].columns.stop
+                a[write] = Run(a[read].row, a[write].columns.start:a[read].columns.stop)
             end
-            read = read+1
+            read += 1
         end
-        write = write+1
+        write += 1
     end
-    deleteat!(a, write:size(a,1))
+    deleteat!(a, write:size(a)[1])
 end
 
 """
-    union(a::Array{Run,1}, b::Array{Run,1})
+    union(a::Vector{Run}, b::Vector{Run})
 
 Calculates the union of two sorted arrays of runs. The function assumes that the runs are sorted
 but does not check this.
 """
-function union(a::Array{Run,1}, b::Array{Run,1})
+function union(a::Vector{Run}, b::Vector{Run})
     res = merge(a, b)
     pack!(res)
     return res
@@ -578,42 +599,49 @@ function union(a::Region, b::Region)
     end
 end
 
-function intersect!(a::Array{Run,1})
+
+"""
+    intersect!(a::Vector{Run})
+
+Intersects runs. intersect! is not exported, since its basic usage is within this file as a 
+building block for intersection.
+"""
+function intersect!(a::Vector{Run})
     read = 1
-    if read > size(a, 1)
+    if read > size(a)[1]
         return
     end
-    next = read+1
+    next = read + 1
     write = read
-    while next <= size(a, 1)
+    while next <= size(a)[1]
         if a[read].row != a[next].row
             read = next
-            next = next+1
+            next += 1
         else
             if a[next].columns.start > a[read].columns.stop
                 read = next
-                next = next+1
+                next += 1
             else
                 a[write] = Run(a[read].row, a[next].columns.start:min(a[read].columns.stop, a[next].columns.stop))
                 if a[next].columns.stop < a[read].columns.stop
                     a[next] = a[read]
                 end
                 read = next
-                next = next+1
-                write = write+1
+                next += 1
+                write += 1
             end
         end
     end
-    deleteat!(a, write:size(a,1))
+    deleteat!(a, write:size(a)[1])
 end
 
 """
-    intersection(a::Array{Run,1}, b::Array{Run,1})
+    intersection(a::Vector{Run}, b::Vector{Run})
 
 Calculates the intersection of two sorted arrays of runs. The function assumes that the runs are sorted
 but does not check this.
 """
-function intersection(a::Array{Run,1}, b::Array{Run,1})
+function intersection(a::Vector{Run}, b::Vector{Run})
     res = merge(a, b)
     intersect!(res)
     return res
@@ -638,35 +666,35 @@ function intersection(a::Region, b::Region)
 end
 
 """
-    difference(a::Array{Run,1}, b::Array{Run,1})
+    difference(a::Vector{Run}, b::Vector{Run})
 
-Calculates the difference of two sorted arrays of runs. The function assumes that the runs are sorted
+Calculates the difference of two sorted vectors of runs. The function assumes that the runs are sorted
 but does not check this.
 """
-function difference(a::Array{Run,1}, b::Array{Run,1})
-    if size(a, 1) == 0
-        return b
+function difference(a::Vector{Run}, b::Vector{Run})
+    if size(a)[1] == 0
+        return Run[]
     end
-    if size(b, 1) == 0
+    if size(b)[1] == 0
         return a
     end
 
-    res = Array{Run,1}(undef, 0)
+    res = Run[]
 
     # first_b and last_b form a range of chords in b that are in the same row
     first_b = findfirst(x -> x.row >= a[1].row, b)
     last_b = first_b
     if first_b != nothing
-        last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b, 1)))
+        last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b)[1]))
     end
 
-    for a_index in 1:size(a, 1)
+    for a_index in 1:size(a)[1]
         if first_b != nothing && a[a_index].row > b[first_b].row
             # update the range
             first_b = findfirst(x -> x.row >= a[a_index].row, b)
             last_b = first_b
             if first_b != nothing
-                last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b, 1)))
+                last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b)[1]))
             end
         end
         if first_b == nothing || a[a_index].row != b[first_b].row
@@ -682,12 +710,12 @@ function difference(a::Array{Run,1}, b::Array{Run,1})
                     elseif b[i].columns.start <= a[a_index].columns.start
                         a[a_index] = Run(a[a_index].row, b[i].columns.stop+1:a[a_index].columns.stop)
                     # overlap at right only, shorten a_chord at right and continue
-                    elseif b[i.columns.stop >= a[a_index].columns.stop]
+                    elseif b[i].columns.stop >= a[a_index].columns.stop
                         a[a_index] = Run(a[a_index].row, a[a_index].columns.start:b[i].columns.start-1)
                     # overlap in the middle, split a_chord into two and continue
                     else
-                        push!(res, Row(a[a_index].row, a[a_index].columns.start:b[i].columns.start-1))
-                        a[a_index] = Row(a[a_index].row, b[i].columns.stop+1, a[a_index].columns.stop)
+                        push!(res, Run(a[a_index].row, a[a_index].columns.start:b[i].columns.start-1))
+                        a[a_index] = Run(a[a_index].row, b[i].columns.stop+1:a[a_index].columns.stop)
                     end
                 end
             end
