@@ -331,11 +331,11 @@ minkowski_subtraction(x::Run, y::Run) = Run(x.row + y.row, x.start + y.stop : x.
 
 ------------------------------------------------------------------------ =#
 
-import Base.copy, Base.-, Base.union, Base.==
+import Base.copy, Base.-, Base.union, Base.==, Base.show
 export Region
-export copy, transpose, -, contains, translate, translate!, left, right, bottom, top
+export copy, transpose, -, contains, translate, translate!
 export complement, complement!
-export left, top, right, bottom, center, center!
+export left, top, right, bottom, width, height, center, center!
 export union, intersection, difference
 export binarize
 
@@ -428,7 +428,7 @@ This function works for non-complement and non-empty regions only.
 """
 function left(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
+    @assert length(r.runs)>0 "cannot calculate for empty regions"
     v = r.runs[1].columns.start
     for i in r.runs
         v = min(v, i.columns.start)
@@ -445,7 +445,7 @@ This function works for non-complement and non-empty regions only.
 """
 function top(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
+    @assert length(r.runs)>0 "cannot calculate for empty regions"
     v = r.runs[1].row
     for i in r.runs
         v = max(v, i.row)
@@ -462,7 +462,7 @@ This function works for non-complement and non-empty regions only.
 """
 function right(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
+    @assert length(r.runs)>0 "cannot calculate for empty regions"
     v = r.runs[1].columns.stop
     for i in r.runs
         v = max(v, i.columns.stop)
@@ -479,12 +479,26 @@ This function works for non-complement and non-empty regions only.
 """
 function bottom(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert size(r.runs)[1]>0 "cannot calculate for empty regions"
+    @assert length(r.runs)>0 "cannot calculate for empty regions"
     v = r.runs[1].row
     for i in r.runs
         v = min(v, i.row)
     end
     return v
+end
+
+function width(r::Region)
+    @assert !r.complement "cannot calculate for infinite (complement) regions"
+    @assert length(r.runs)>0 "cannot calculate for empty regions"
+
+    return right(r)-left(r)+1
+end
+
+function height(r::Region)
+    @assert !r.complement "cannot calculate for infinite (complement) regions"
+    @assert length(r.runs)>0 "cannot calculate for empty regions"
+
+    return top(r)-bottom(r)+1
 end
 
 function center(r::Region)
@@ -957,33 +971,34 @@ function morphgradient(a::Region, b::Region)
 end
 
 
+
 #=
 The following functions should go into blob or thresholding module
 TODO: use a predicate
 =#
 
-function binarize(image, t)
+function binarize(image, threshold)
     region = Region(Run[], false) # TODO how to reserve space?    
 
-    for row=1:size(image, 1)
+    for row in 1:size(image)[1]
         inside_object = false
         start_column = 0
-        for column=1:size(image, 2)
-            if (image[row, column] > t) # predicate
-                if !inside_object
+        for column in 1:size(image)[2]
+            if image[row, column] > threshold 
+                if false == inside_object
                     inside_object = true
                     start_column = column
                 end
             else
-                if inside_object
+                if true == inside_object
                     inside_object = false
                     push!(region.runs, Run(row, start_column:(column-1)))
                 end
             end
         end
         # if still inside at the end of a line...
-        if inside_object
-            push!(region.runs, Run(row, start_column:size(image, 2)))
+        if true == inside_object
+            push!(region.runs, Run(row, start_column:size(image)[2]))
         end
     end
 
@@ -1074,5 +1089,24 @@ function connection(region::Region, dx::Integer, dy::Integer)
 
 
 end
+
+
+
+using Images
+
+function Base.show(io::IO, mime::MIME"image/png", r::Region)
+    # convert region to an image and show image
+    x0 = left(r)
+    y0 = bottom(r)
+    img = zeros(Gray{N0f8}, height(r), width(r))
+    for run in r.runs
+        for column in run.columns
+            img[run.row-y0+1, column-x0+1] = Gray(1)
+        end
+    end
+    Base.show(io, mime, img)
+end
+
+
 
 end # module
