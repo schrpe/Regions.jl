@@ -342,7 +342,7 @@ export copy, transpose, -, contains, translate, translate!
 export complement, complement!
 export left, top, right, bottom, width, height, center, center!
 export union, intersection, difference
-export binarize
+export binarize, connection
 
 """
     Region
@@ -1038,6 +1038,8 @@ end
 This function splits a region into connected objects that are returned as a vector of regions.
 """
 function connection(region::Region, dx::Integer, dy::Integer)
+    @assert dx >= 0 "dx must be 0 or bigger"
+    @assert dy >= 0 "dy must be 0 or bigger"
 
     function uf_find_root(ufa, x)
         i = x
@@ -1098,10 +1100,10 @@ function connection(region::Region, dx::Integer, dy::Integer)
         next_run_index = run_index + 1
         while next_run_index <= length(region.runs) &&
             region.runs[next_run_index].row <= run.row + dy
-            if is_close(run, region.runs[next_run_index], dx, dy)
+            if isclose(run, region.runs[next_run_index], dx, dy)
                 uf_union(union_find, run_index, next_run_index)
             end
-            next_run_inde += 1
+            next_run_index += 1
         end
         run_index += 1
     end
@@ -1112,9 +1114,25 @@ function connection(region::Region, dx::Integer, dy::Integer)
     ##    -2 <-> region 1 
     ## ....
     ## Also counts the # of roots (i.e. number of connected components).
+    r_idx = -1
 
+    for idx = 1:length(union_find)
+        if union_find[idx] <= -1
+            union_find[idx] = r_idx
+            r_idx -= 1
+        end
+    end
 
+    num_regions = r_idx * (-1) - 1;
+    connected_objects = Region[Region(Run[]) for _ = 1:num_regions];
 
+    for idx = 1:length(union_find)
+        root = uf_find_root(union_find, idx)
+        region_idx = union_find[root] * (-1)
+        push!(connected_objects[region_idx].runs, region.runs[idx])
+    end
+
+    return connected_objects;
 end
 
 #=
