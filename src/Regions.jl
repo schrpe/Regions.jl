@@ -980,11 +980,30 @@ end
 
 #=
 The following functions should go into blob or thresholding module
-TODO: use a predicate
 =#
 
-function binarize(image, threshold)
-    region = Region(Run[], false) # TODO how to reserve space?    
+"""
+    binarize(image, predicate)
+
+Binarize an image and return a region.
+
+The predicate must be a funtion that takes a pixel value and returns a boolean result based
+on the pixel value.
+
+Here are some useful examples:
+
+# the returned region will contain all pixels > 0.3
+reg = binarize(img, x -> x > 0.3)
+
+# the returned region will contain all pixels <= 0.5
+reg = binarize(img, x -> x <= 0.5)
+
+# the returned region will contain all pixels between 0.3 and 0.8
+reg = binarize(img, x -> x > 0.3 && x < 0.8)
+
+"""
+function binarize(image, predicate)
+    region = Region(Run[], false) 
 
     rows, columns = size(image)
 
@@ -992,7 +1011,7 @@ function binarize(image, threshold)
         inside_object = false
         start_column = 0
         for column in 1:columns
-            if image[row, column] > threshold 
+            if predicate(image[row, column]) 
                 if false == inside_object
                     inside_object = true
                     start_column = column
