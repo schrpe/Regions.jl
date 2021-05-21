@@ -339,7 +339,7 @@ minkowski_subtraction(x::Run, y::Run) = Run(x.row + y.row, x.start + y.stop : x.
 import Base.copy, Base.-, Base.union, Base.==, Base.show
 export Region
 export copy, transpose, -, contains, translate, translate!
-export complement, complement!
+export complement
 export left, top, right, bottom, width, height, center, center!
 export union, intersection, difference
 export binarize, connection
