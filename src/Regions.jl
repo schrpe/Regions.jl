@@ -1135,22 +1135,114 @@ function connection(region::Region, dx::Integer, dy::Integer)
     return connected_objects;
 end
 
-#=
+"""
+    left(x::Vector{Region})
+
+Calculates the leftmost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
+function left(regions::Vector{Region})
+    if length(regions) > 0
+        l = left(regions[1])
+        for region in regions
+            l = min(l, left(region))
+        end
+        return l
+    else
+        return missing
+    end
+end
+
+"""
+    top(x::Vector{Region})
+
+Calculates the topmost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
+function top(regions::Vector{Region})
+    if length(regions) > 0
+        t = top(regions[1])
+        for region in regions
+            t = max(t, top(region))
+        end
+        return t
+    else
+        return missing
+    end
+end
+
+"""
+    right(x::Vector{Region})
+
+Calculates the rightmost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
+function right(regions::Vector{Region})
+    if length(regions) > 0
+        r = right(regions[1])
+        for region in regions
+            top = max(r, right(region))
+        end
+        return r
+    else
+        return missing
+    end
+end
+
+"""
+    bottom(x::Vector{Region})
+
+Calculates the bottommost region coordinate.
+
+This function works for non-complement and non-empty regions only.
+"""
+function bottom(regions::Vector{Region})
+    if length(regions) > 0
+        b = bottom(regions[1])
+        for region in regions
+            top = min(b, bottom(region))
+        end
+        return b
+    else
+        return missing
+    end
+end
+
+function width(regions::Vector{Region})
+    if length(regions) > 0
+        return right(regions)-left(regions)+1
+    else
+        return missing
+    end
+end
+
+function height(regions::Vector{Region})
+    if length(regions) > 0
+        return top(regions)-bottom(regions)+1
+    else
+        return missing
+    end
+end
+
+
 
 using Images
 
 
 """
-    Base.show(io, mime::MIME"image/png", r)
+    Base.show(io, mime::MIME"image/png", r::Region)
 
 Shows a rich graphical display of a region. 
 """
-function Base.show(io::IO, mime::MIME"image/png", r::Region)
+function Base.show(io::IO, mime::MIME"image/png", region::Region)
     # convert region to an image and show image
-    x0 = left(r)
-    y0 = bottom(r)
-    img = zeros(RGBA{N0f8}, height(r), width(r))
-    for run in r.runs
+    x0 = left(region)
+    y0 = bottom(region)
+    img = zeros(RGBA{N0f8}, height(region), width(region))
+    for run in region.runs
         for column in run.columns
             img[run.row-y0+1, column-x0+1] = RGBA(0,0,1,0.5)
         end
@@ -1158,6 +1250,37 @@ function Base.show(io::IO, mime::MIME"image/png", r::Region)
     Base.show(io, mime, img)
 end
 
-=#
+
+"""
+    Base.show(io, mime::MIME"image/png", regions::Region[])
+
+Shows a rich graphical display of a vector of regions. 
+"""
+function Base.show(io::IO, mime::MIME"image/png", regions::Vector{Region})
+    # convert region vector to an image and show image
+    x0 = left(regions)
+    y0 = bottom(regions)
+    img = zeros(RGBA{N0f8}, height(regions)+100, width(regions)+100)
+    red = RGBA(1,0,0,0.5)
+    green = RGBA(0,1,0,0.5)
+    blue = RGBA(0,0,1,0.5)
+    color = red
+    for region in regions 
+        for run in region.runs
+            for column in run.columns
+                img[run.row-y0+1, column-x0+1] =color
+            end
+        end
+        if red == color
+            color = green
+        elseif green == color
+            color = blue
+        else
+            color = red
+        end
+    end
+    Base.show(io, mime, img)
+end
+
 
 end # module
