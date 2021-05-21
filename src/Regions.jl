@@ -8,6 +8,11 @@ Main module for Regions.jl - a set of types that model a discrete
 
 * Run   
 * Region
+
+# Dependencies
+
+* Images.jl
+
 """
 module Regions
 
@@ -155,11 +160,11 @@ export isempty, isless, minkowski_addition, minkowski_subtraction
 """
     Run
 
-A run is a (possibly partial) set of consecutive coordinates within a row of a 
+A run is a set of consecutive coordinates within a row (possibly partial) of a 
 region. It consists of a discrete row coordinate (of type Signed) and a range 
 of discrete column coordinates (of type UnitRange{Int64}).
 
-Runs specify a sort order: one run is smaller than the other if it starts
+Runs within a region specify a sort order: one run is smaller than the other if it starts
 before the other run modeling the coordinates from left to right and top to 
 bottom.
 """
@@ -379,7 +384,7 @@ column coordinates, the order of the runs is inversed as well.
 function invert(x::Region)
     result = Region(Run[], x.complement) # TODO how to reserve space?
     # iterating backwards maintains the correct sort order of the runs
-    for i in size(x.runs)[1]:-1:1
+    for i in length(x.runs):-1:1
         push!(result.runs, -x.runs[i])
     end
     return result
@@ -402,7 +407,7 @@ translate(r::Region, d::Vector{Int64}) = translate(r, d[1], d[2])
 +(x::Vector{Int64}, y::Region) = translate(y, x[1], x[2])
 -(x::Region, y::Vector{Int64}) = translate(x, -y[1], -y[2])
 function translate!(r::Region, x::Integer, y::Integer)
-    for i in [1, size(r.runs)[1]]
+    for i in [1, length(r.runs)]
         r.runs[i] = translate(r.runs[i], x, y)
     end
     return r
@@ -543,9 +548,9 @@ function merge(a::Vector{Run}, b::Vector{Run})
     res = Run[]
     i = 1
     j = 1
-    while i <= size(a, 1)
-        if j > size(b, 1)
-            while i <= size(a, 1)
+    while i <= length(a)
+        if j > length(b)
+            while i <= length(a)
                 push!(res, a[i])
                 i = i+1
             end
@@ -559,7 +564,7 @@ function merge(a::Vector{Run}, b::Vector{Run})
             i = i+1
         end
     end
-    while j <= size(b, 1)
+    while j <= length(b)
         push!(res, b[j])
         j = j+1
     end
@@ -594,11 +599,11 @@ function pack!(a::Vector{Run})
     read = 1
     write = 1
 
-    while read <= size(a)[1]
+    while read <= length(a)
         a[write] = a[read]
         read += 1
 
-        while read <= size(a)[1] && a[write].row == a[read].row && a[write].columns.stop + 1 >= a[read].columns.start
+        while read <= length(a) && a[write].row == a[read].row && a[write].columns.stop + 1 >= a[read].columns.start
             if a[read].columns.stop > a[write].columns.stop
                 a[write] = Run(a[read].row, a[write].columns.start:a[read].columns.stop)
             end
@@ -606,7 +611,7 @@ function pack!(a::Vector{Run})
         end
         write += 1
     end
-    deleteat!(a, write:size(a)[1])
+    deleteat!(a, write:length(a))
 end
 
 """
@@ -648,12 +653,12 @@ building block for intersection.
 """
 function intersect!(a::Vector{Run})
     read = 1
-    if read > size(a)[1]
+    if read > length(a)
         return
     end
     next = read + 1
     write = read
-    while next <= size(a)[1]
+    while next <= length(a)
         if a[read].row != a[next].row
             read = next
             next += 1
@@ -672,7 +677,7 @@ function intersect!(a::Vector{Run})
             end
         end
     end
-    deleteat!(a, write:size(a)[1])
+    deleteat!(a, write:length(a))
 end
 
 """
@@ -712,10 +717,11 @@ Calculates the difference of two sorted vectors of runs. The function assumes th
 but does not check this.
 """
 function difference(a::Vector{Run}, b::Vector{Run})
-    if size(a)[1] == 0
+    if length(a) == 0
         return Run[]
     end
-    if size(b)[1] == 0
+
+    if length(b) == 0
         return a
     end
 
@@ -725,16 +731,16 @@ function difference(a::Vector{Run}, b::Vector{Run})
     first_b = findfirst(x -> x.row >= a[1].row, b)
     last_b = first_b
     if first_b != nothing
-        last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b)[1]))
+        last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:length(b)))
     end
 
-    for a_index in 1:size(a)[1]
+    for a_index in 1:length(a)
         if first_b != nothing && a[a_index].row > b[first_b].row
             # update the range
             first_b = findfirst(x -> x.row >= a[a_index].row, b)
             last_b = first_b
             if first_b != nothing
-                last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:size(b)[1]))
+                last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:length(b)))
             end
         end
         if first_b == nothing || a[a_index].row != b[first_b].row
@@ -980,10 +986,12 @@ TODO: use a predicate
 function binarize(image, threshold)
     region = Region(Run[], false) # TODO how to reserve space?    
 
-    for row in 1:size(image)[1]
+    rows, columns = size(image)
+
+    for row in 1:rows
         inside_object = false
         start_column = 0
-        for column in 1:size(image)[2]
+        for column in 1:columns
             if image[row, column] > threshold 
                 if false == inside_object
                     inside_object = true
@@ -998,7 +1006,7 @@ function binarize(image, threshold)
         end
         # if still inside at the end of a line...
         if true == inside_object
-            push!(region.runs, Run(row, start_column:size(image)[2]))
+            push!(region.runs, Run(row, start_column:columns))
         end
     end
 
@@ -1090,23 +1098,29 @@ function connection(region::Region, dx::Integer, dy::Integer)
 
 end
 
-
+#=
 
 using Images
 
+
+"""
+    Base.show(io, mime::MIME"image/png", r)
+
+Shows a rich graphical display of a region. 
+"""
 function Base.show(io::IO, mime::MIME"image/png", r::Region)
     # convert region to an image and show image
     x0 = left(r)
     y0 = bottom(r)
-    img = zeros(Gray{N0f8}, height(r), width(r))
+    img = zeros(RGBA{N0f8}, height(r), width(r))
     for run in r.runs
         for column in run.columns
-            img[run.row-y0+1, column-x0+1] = Gray(1)
+            img[run.row-y0+1, column-x0+1] = RGBA(0,0,1,0.5)
         end
     end
     Base.show(io, mime, img)
 end
 
-
+=#
 
 end # module
