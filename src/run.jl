@@ -7,7 +7,7 @@
 import Base.isempty, Base.isless, Base.transpose, Base.-, Base.+, Base.contains
 export Run
 export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
-export isempty, isless, minkowski_addition, minkowski_subtraction
+export isempty, isless
 
 """
     Run
@@ -157,28 +157,3 @@ If distance > 1 this is testing of closeness.
 isclose(a::Run, b::Run, x::Integer, y::Integer) = abs(a.row - b.row) <= y && isclose(a.columns, b.columns, x)
 isclose(a::Run, b::Run, d::Integer) = isclose(a, b, d, d)
 isclose(a::Run, b::Run, distance::Vector{Int64}) = isclose(a, b, distance[1], distance[2])
-
-"""
-    minkowski_addition(x::Run, y::Run)
-
-Minkowski addition for two runs.
-
-This is a building block for region-based morphology. It avoids
-touching each item of a range and calculates the result only by
-manipulating the range ends.
-"""
-minkowski_addition(x::Run, y::Run) = Run(x.row + y.row, x.start + y.start : x.stop + y.stop)
-
-"""
-    minkowski_subtraction(x::Run, y::Run)
-
-Minkowski subtraction for two runs.
-
-This is a building block for region-based morphology. It avoids
-touching each item of a range and calculates the result only by
-manipulating the range ends.
-"""
-minkowski_subtraction(x::Run, y::Run) = Run(x.row + y.row, x.start + y.stop : x.stop + y.start)
-# TODO check minkowski subtraction, code seems to be wrong
-
-
