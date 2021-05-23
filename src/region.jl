@@ -11,6 +11,7 @@ export complement
 export left, top, right, bottom, width, height, center, center!
 export union, intersection, difference
 export binarize, connection
+export region_from_box
 
 """
     Region
@@ -457,4 +458,20 @@ function difference(a::Region, b::Region)
     else
         return Region(difference(a.runs, b.runs), false)
     end
+end
+
+"""
+    region_from_box(left::Integer, top::Integer, right::Integer, bottom::Integer)
+
+Create a region given box coordinates. The region consists of all coordinates within the box.
+"""
+function region_from_box(left::Integer, top::Integer, right::Integer, bottom::Integer)
+    @assert bottom < top "bottom must be smaller than top"
+    @assert left < right "left must be smaller than right"
+
+    region = Region(Run[])
+    for row in bottom:top
+        push!(region.runs, Run(row, left:right))
+    end
+    return region
 end
