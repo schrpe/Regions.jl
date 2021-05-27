@@ -1,8 +1,7 @@
 """
     Regions
 
-Main module for Regions.jl - a set of types that model a discrete 
-2-dimensional region concept.
+Main module for Regions.jl - a set of types that model a discrete 2-dimensional region concept.
 
 # Exports
 
@@ -16,15 +15,14 @@ Main module for Regions.jl - a set of types that model a discrete
 """
 module Regions
 
+using Images
+
+export binarize, components
+
 include("range.jl")
 include("run.jl")
 include("region.jl")
 include("region_vector.jl")
-
-
-#=
-The following functions should go into blob or thresholding module
-=#
 
 """
     binarize(image, predicate)
@@ -77,13 +75,13 @@ function binarize(image, predicate)
 end
 
 """
-    connection(region::Region, dx::Integer, dy::Integer)
+    components(region::Region, dx::Unsigned=1, dy::Unsigned=1)
 
-This function splits a region into connected objects that are returned as a vector of regions.
+This function splits a region into connected component objects that are returned as a vector of regions.
+
+The dx and dy parameters specify the size of gaps that are still considered to be the same object.
 """
-function connection(region::Region, dx::Integer, dy::Integer)
-    @assert dx >= 0 "dx must be 0 or bigger"
-    @assert dy >= 0 "dy must be 0 or bigger"
+function components(region::Region, dx::Unsigned=unsigned(1), dy::Unsigned=unsigned(1))
 
     function uf_find_root(ufa, x)
         i = x
@@ -178,62 +176,5 @@ function connection(region::Region, dx::Integer, dy::Integer)
 
     return connected_objects;
 end
-
-
-using Images
-
-
-"""
-    Base.show(io, mime::MIME"image/png", r::Region)
-
-Shows a rich graphical display of a region. 
-"""
-function Base.show(io::IO, mime::MIME"image/png", region::Region)
-    # convert region to an image and show image
-    x0 = left(region)
-    y0 = bottom(region)
-    img = zeros(RGBA{N0f8}, height(region), width(region))
-    for run in region.runs
-        for column in run.columns
-            img[run.row-y0+1, column-x0+1] = RGBA(0,0,1,0.5)
-        end
-    end
-    Base.show(io, mime, img)
-end
-
-
-"""
-    Base.show(io, mime::MIME"image/png", regions::Region[])
-
-Shows a rich graphical display of a vector of regions. 
-"""
-function Base.show(io::IO, mime::MIME"image/png", regions::Vector{Region})
-    # convert region vector to an image and show image
-    x0 = left(regions)
-    y0 = bottom(regions)
-    x1 = right(regions)
-    y1 = top(regions)
-    img = zeros(RGBA{N0f8}, y1-y0+1, x1-x0+1)
-    red = RGBA(1,0,0,0.5)
-    green = RGBA(0,1,0,0.5)
-    blue = RGBA(0,0,1,0.5)
-    color = red
-    for region in regions 
-        for run in region.runs
-            for column in run.columns
-                img[run.row-y0+1, column-x0+1] =color
-            end
-        end
-        if red == color
-            color = green
-        elseif green == color
-            color = blue
-        else
-            color = red
-        end
-    end
-    Base.show(io, mime, img)
-end
-
 
 end # module
