@@ -1,7 +1,7 @@
 name = "Regions"
 uuid = "4e3eb3bd-530d-473f-987b-017f501eadde"
 authors = ["schrpe"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
