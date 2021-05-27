@@ -4,27 +4,9 @@
 
 ------------------------------------------------------------------------ =#
 
-import Base.-, Base.+, Base.contains, Base.∈
-export invert, translate, +, -
-export transpose, contains, isoverlapping, istouching, isclose
-
-"""
-    invert(x::UnitRange{Int64})
-
-Inverts a range. Inversion mirrors a range at the origin. A range is 
-inverted by reversing and inverting each of its coordinates.
-
-```jldoctest
-julia> using Regions
-
-julia> invert(5:10)
--10:-5
-
-julia> invert(invert(0:100))
-0:100
-```
-"""
-invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
+import Base: -, +, contains, ∈
+export translate, -, +
+export invert, contains, isoverlapping, istouching, isclose
 
 """
     translate(x::UnitRange{Int64}, y::Integer)
@@ -57,6 +39,24 @@ translate(x::UnitRange{Int64}, y::Integer) = x + y
 -(x::UnitRange{Int64}, y::Integer) = x.start - y : x.stop - y
 
 """
+    invert(x::UnitRange{Int64})
+
+Inverts a range. Inversion mirrors a range at the origin. A range is 
+inverted by reversing and inverting each of its coordinates.
+
+```jldoctest
+julia> using Regions
+
+julia> invert(5:10)
+-10:-5
+
+julia> invert(invert(0:100))
+0:100
+```
+"""
+invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
+
+"""
     contains(x::UnitRange{Int64}, y::Integer)
 
 Test if range x contains value x.
@@ -80,6 +80,7 @@ false
 ```
 """
 contains(x::UnitRange{Int64}, y::Integer) = y ∈ x
+∈(x::UnitRange{Int64}, y::Integer) = y ∈ x
 
 """
     isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64})
