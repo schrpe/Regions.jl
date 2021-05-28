@@ -4,10 +4,11 @@
 
 ------------------------------------------------------------------------ =#
 
-import Base.isempty, Base.isless, Base.transpose, Base.-, Base.+, Base.contains
+import Base: isempty, isless, -, +, contains, ∈
 export Run
-export translate, +, -, transpose, contains, ϵ, isoverlapping, istouching, isclose
-export isempty, isless
+export isempty, isless, invert
+export translate, -, +
+export contains, isoverlapping, istouching, isclose
 
 """
     Run

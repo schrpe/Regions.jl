@@ -4,14 +4,14 @@
 
 ------------------------------------------------------------------------ =#
 
-import Base.copy, Base.-, Base.union, Base.==, Base.show
+import Base: copy, -, union, ==, show
 export Region
-export copy, transpose, -, contains, translate, translate!
-export complement
-export left, top, right, bottom, width, height, center, center!
+export isempty, ==, copy, invert, -, translate, translate!, contains, ∈
+export left, top, right, bottom, bounds
+export complement, complement!
 export union, intersection, difference
-export binarize, connection
 export region_from_box
+export region_to_image
 
 """
     Region
@@ -26,6 +26,23 @@ struct Region
 end
 
 Region(runs::Vector{Run}) = Region(runs, false)
+
+"""
+    isempty(x::Region)
+
+Discover whether the region is empty.
+
+```jldoctest
+julia> using Regions
+
+julia> isempty(Region(Run[]))
+true
+
+julia> isempty(Region([Run(2, 1:1)]))
+false
+```
+"""
+isempty(x::Region) = isempty(x.runs)
 
 """
     ==(a::Region, b::Region)
@@ -161,36 +178,28 @@ function bottom(r::Region)
     return v
 end
 
-function width(r::Region)
-    @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert length(r.runs)>0 "cannot calculate for empty regions"
+"""
+    bounds(x::Region)
 
-    return right(r)-left(r)+1
-end
+Calculates the left, top, right and bottom region coordinate and returns them
+as a tuple.
 
-function height(r::Region)
-    @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert length(r.runs)>0 "cannot calculate for empty regions"
-
-    return top(r)-bottom(r)+1
-end
-
-function center(r::Region)
-    x = -(left(r)+right(r))÷2
-    y = -(bottom(r)+top(r))÷2
-    result = Region([], r.complement)
-    for run in r.runs
-        append!(result.runs, translate(run, x, y))
+This function works for non-complement and non-empty regions only.
+"""
+function bounds(region::Region)
+    @assert !region.complement "cannot calculate for infinite (complement) regions"
+    @assert length(region.runs)>0 "cannot calculate for empty regions"
+    l = region.runs[1].columns.start
+    t = region.runs[1].row
+    r = region.runs[1].columns.stop
+    b = region.runs[1].row
+    for run in region.runs
+        l = min(l, run.columns.start)
+        t = max(t, run.row)
+        r = max(r, run.columns.stop)
+        b = min(b, run.row)
     end
-    return result
-end
-
-function center!(r::Region)
-    x = -(left(r)+right(r))÷2
-    y = -(bottom(r)+top(r))÷2
-    for run in r.runs
-        translate!(run, x, y)
-    end
+    return l, t, r, b
 end
 
 """
@@ -203,6 +212,7 @@ what is included within the region. With a complemented region, the runs specify
 non-contained pixels, i.e. they specify what is not included within the region.
 """
 complement(x::Region) = Region(copy(x.runs), !x.complement)
+complement!(x::Region) = x.complement =! x.complement
 
 """
     merge(a::Vector{Run}, b::Vector{Run})
@@ -475,3 +485,41 @@ function region_from_box(left::Integer, top::Integer, right::Integer, bottom::In
     end
     return region
 end
+
+"""
+    region_to_image(r::Region, color=Gray(true))
+
+Converts a region to an image. The function determines the bounds of the
+region and then renders the region into the image.
+
+The background of the image is filled with zeroes, the region pixels are
+colored with the passed in color.
+
+Some examples of colors that you can pass:
+Gray(0.5) : mid gray value
+RGB(1, 0, 0) : brightest red value
+RGBA(0, 0.5, 0, 0.5) : half transparent mid green value
+"""
+function region_to_image(region::Region, color=Gray(true))
+    (l, t, r, b) = bounds(region)
+    img = zeros(typeof(color), t-b+1, r-l+1)
+    for run in region.runs
+        for column in run.columns
+            img[run.row-b+1, column-l+1] = color
+        end
+    end
+    return img
+end
+
+"""
+    Base.show(io, mime::MIME"image/png", r::Region)
+
+Shows a rich graphical display of a region. The region is displayed in a half 
+transparent blue color.
+"""
+function Base.show(io::IO, mime::MIME"image/png", region::Region)
+    if !isempty(region)
+        Base.show(io, mime, region_to_image(region, RGBA(0,0,1,0.5)))
+    end
+end
+
