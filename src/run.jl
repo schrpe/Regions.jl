@@ -125,15 +125,38 @@ translate(a::Run, b::Vector{Int64}) = a + b
     contains(r::Run, a::Vector{Int64})
 
 Test if run r contains position (x, y).
+
+```jldoctest reg
+julia> using Regions
+
+julia> contains(Run(2, 5:10), 7, 2)
+true
+
+julia> contains(Run(2, 5:10), 7, 3)
+false
+
+julia> contains(Run(2, 5:10), 12, 2)
+false
+```
 """
 contains(r::Run, x::Integer, y::Integer) = (r.row == y) && contains(r.columns, x)
 contains(r::Run, a::Vector{Int64}) = contains(r, a[1], a[2])
-∈(r::Run, a::Vector{Int64}) = contains(r, a)
+∈(a::Vector{Int64}, r::Run) = contains(r, a)
 
 """
     isoverlapping(x::Run, y::Run)
 
 Test if two runs overlap.
+
+```jldoctest
+julia> using Regions
+
+julia> isoverlapping(0:10, 5:15)
+true
+
+julia> isoverlapping(0:10, 20:30)
+false
+```
 """
 isoverlapping(x::Run, y::Run) = x.row == y.row && isoverlapping(x.columns, y.columns)
 
@@ -141,6 +164,16 @@ isoverlapping(x::Run, y::Run) = x.row == y.row && isoverlapping(x.columns, y.col
     istouching(x::Run, y::Run)
 
 Test if two runs touch.
+
+```jldoctest
+julia> using Regions
+
+julia> istouching(Run(5, 0:10), Run(6, 11:21))
+true
+
+julia> istouching(Run(5, 0:10), Run(5, 12:22))
+false
+```
 """
 istouching(x::Run, y::Run) = abs(x.row - y.row) ≤ 1 && istouching(x.columns, y.columns)
 
@@ -154,6 +187,16 @@ Test if two runs are close.
 If distance == 0 this is the same as isoverlapping().
 If distance == 1 this is the same as istouching().
 If distance > 1 this is testing of closeness.
+
+```jldoctest
+julia> using Regions
+
+julia> isclose(Run(5, 0:10), Run(8, 15:20), 5, 3)
+true
+
+julia> isclose(Run(5, 0:10), Run(8, 15:20), 2, 2)
+false
+```
 """
 isclose(a::Run, b::Run, x::Integer, y::Integer) = abs(a.row - b.row) <= y && isclose(a.columns, b.columns, x)
 isclose(a::Run, b::Run, d::Integer) = isclose(a, b, d, d)
