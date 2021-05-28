@@ -39,6 +39,7 @@
 
     @test invert(1:2) == -2:-1
     @test invert(-1:0) == 0:1
+    @test invert(invert(-1:1)) == -1:1
     @test invert(invert(1:2)) == 1:2
 
     @test !contains(0:-1, 0)
@@ -49,6 +50,15 @@
     @test contains(0:1, 0)
     @test contains(0:1, 1)
     @test !contains(0:1, 2)
+
+    @test 0 ∉ 0:-1
+    @test -1 ∉ 0:-1
+    @test 0 ∈ 0:0
+    @test 1 ∉ 0:0
+    @test -1 ∉ 0:1
+    @test 0 ∈ 0:1
+    @test 1 ∈ 0:1
+    @test 2 ∉ 0:1
 
     @test !isoverlapping(0:1, 6:7)
     @test !isoverlapping(1:2, 5:6)

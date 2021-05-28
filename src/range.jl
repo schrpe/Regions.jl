@@ -80,7 +80,6 @@ false
 ```
 """
 contains(x::UnitRange{Int64}, y::Integer) = y ∈ x
-∈(x::UnitRange{Int64}, y::Integer) = y ∈ x
 
 """
     isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64})
@@ -124,5 +123,15 @@ Test if two ranges are close.
 If distance == 0 this is the same as isoverlapping().
 If distance == 1 this is the same as istouching().
 If distance > 1 this is testing of closeness.
+
+```jldoctest
+julia> using Regions
+
+julia> isclose(0:10, 15:25, 5)
+true
+
+julia> isclose(0:10, 15:25, 4)
+false
+```
 """
 isclose(x::UnitRange{Int64}, y::UnitRange{Int64}, distance::Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)
