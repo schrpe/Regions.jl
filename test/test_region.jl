@@ -2,7 +2,9 @@
 # This file is supposed to be included from runtests.jl.
 
 @testset "Region" begin
+    @test length(Region().runs) == 0
     @test length(Region(Run[]).runs) == 0
+    @test length(Region(Run[], false).runs) == 0
 
     @test Region([Run(0, 0:0)]).complement == false
     @test Region([Run(0, 0:0)], false).complement == false
@@ -74,6 +76,34 @@
     @test !contains(Region([Run(0, 0:1), Run(1, 0:1)]), -1, 1)
     @test !contains(Region([Run(0, 0:1), Run(1, 0:1)]), -1, 2)
     @test !contains(Region([Run(0, 0:1), Run(1, 0:1)]), -1, 2)
+    
+    @test [0, -1] ∉ Region([Run(0, 0:-1)])
+    @test [0, 0] ∉ Region([Run(0, 0:-1)])
+    @test [0, 1] ∉ Region([Run(0, 0:-1)])
+    @test [-1, -1] ∉ Region([Run(0, 0:0)])
+    @test [0, 1] ∉ Region([Run(0, 0:0)])
+    @test [-1, 0] ∉ Region([Run(0, 0:0)])
+    @test [0, 0] ∈ Region([Run(0, 0:0)])
+    @test [0, 1] ∉ Region([Run(0, 0:0)])
+    @test [1, 0] ∉ Region([Run(0, 0:0)])
+    @test [-1, 0] ∉ Region([Run(0, 0:1)])
+    @test [0, -1] ∉ Region([Run(0, 0:1)])
+    @test [0, 0] ∈ Region([Run(0, 0:1)])
+    @test [1, 0] ∈ Region([Run(0, 0:1)])
+    @test [2, 0] ∉ Region([Run(0, 0:1)])
+    @test [1, 1] ∉ Region([Run(0, 0:1)])
+    @test [0, 0] ∈ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [1, 0] ∈ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [0, 1] ∈ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [1, 1] ∈ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [-1, 0] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [2, 0] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [-1, 1] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [2, 1] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [-1, 0] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [-1, 1] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [-1, 2] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
+    @test [-1, 2] ∉ Region([Run(0, 0:1), Run(1, 0:1)])
 
     @test complement(Region([Run(0, 0:1)])).complement == true;
     @test complement(Region([Run(0, 0:1)])).runs == Region([Run(0, 0:1)]).runs;

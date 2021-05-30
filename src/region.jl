@@ -19,6 +19,18 @@ export region_to_image
 A region is a discrete set of coordinates in two-dimensional euclidean space.
 
 A region consists of zero or more runs, which are sorted in ascending order.
+
+```jldoctest reg
+julia> using Regions
+
+julia> Region() # create an empty region
+Region(Run[], false)
+
+julia> Region([Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)]) # create a region with 3 runs
+Region(Run[Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)], false)
+
+julia> Region([Run(y, x1:x2) for y=-10:10, x1=-10, x2=10]); # create a region with many runs using comprehension 
+```
 """
 struct Region
     runs::Vector{Run}
@@ -26,6 +38,7 @@ struct Region
 end
 
 Region(runs::Vector{Run}) = Region(runs, false)
+Region() = Region(Run[], false)
 
 """
     isempty(x::Region)
@@ -49,6 +62,17 @@ isempty(x::Region) = isempty(x.runs)
 
 Equality operator for two regions. Two regions are equal, if both their runs and their 
 complement flags are equal.
+
+```jldoctest
+julia> using Regions
+
+julia> a = Region([Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)]);
+
+julia> b = Region([Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)]);
+
+julia> a == b
+true
+```
 """
 ==(a::Region, b::Region) = a.runs == b.runs && a.complement == b.complement
 
@@ -56,6 +80,15 @@ complement flags are equal.
     copy(x::Region)
     
 Create a copy of a region.    
+
+```jldoctest
+julia> using Regions
+
+julia> a = Region([Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)]);
+
+julia> b = copy(a)
+Region(Run[Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)], false)
+```
 """
 copy(x::Region) = Region(copy(x.runs), x.complement)
 
@@ -66,16 +99,24 @@ copy(x::Region) = Region(copy(x.runs), x.complement)
 Invert a region. Inversion mirrors a region at the origin. A region is inverted
 by inverting each of its runs. Since the runs of a region are sorted by their row and
 column coordinates, the order of the runs is inversed as well.
+
+```jldoctest
+julia> using Regions
+
+julia> a = Region([Run(0, 0:2), Run(1, 0:2), Run(2, 0:2)]);
+
+julia> b = invert(a)
+Region(Run[Run(-2, -2:0), Run(-1, -2:0), Run(0, -2:0)], false)
+```
 """
 function invert(x::Region)
-    result = Region(Run[], x.complement) # TODO how to reserve space?
+    result = Region(Run[], x.complement)
     # iterating backwards maintains the correct sort order of the runs
     for i in length(x.runs):-1:1
         push!(result.runs, -x.runs[i])
     end
     return result
 end
-
 -(x::Region) = invert(x)
 
 """
@@ -84,6 +125,15 @@ end
 
 Translate a region. Translation moves a region. A region is translated by translating each 
 of its runs. 
+
+```jldoctest
+julia> using Regions
+
+julia> a = Region([Run(0, 0:2), Run(1, 0:2), Run(2, 0:2)]);
+
+julia> b = translate(a, -1, -1)
+Region(Run[Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)], false)
+```
 """
 function translate(r::Region, x::Integer, y::Integer)
     return translate!(copy(r), x, y)
@@ -93,7 +143,7 @@ translate(r::Region, d::Vector{Int64}) = translate(r, d[1], d[2])
 +(x::Vector{Int64}, y::Region) = translate(y, x[1], x[2])
 -(x::Region, y::Vector{Int64}) = translate(x, -y[1], -y[2])
 function translate!(r::Region, x::Integer, y::Integer)
-    for i in [1, length(r.runs)]
+    for i in 1:length(r.runs)
         r.runs[i] = translate(r.runs[i], x, y)
     end
     return r
@@ -108,7 +158,7 @@ Test if region r contains position (x, y).
 """
 contains(r::Region, x::Integer, y::Integer) = r.complement ? !any(run -> contains(run, x, y), r.runs) : any(run -> contains(run, x, y), r.runs)
 contains(r::Region, a::Array{Int64, 1}) = contains(r, a[1], a[2])
-∈(r::Region, a::Array{Int64, 1}) = contains(r, a)
+∈(a::Array{Int64, 1}, r::Region) = contains(r, a)
 
 """
     left(x::Region)
