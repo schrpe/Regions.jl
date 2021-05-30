@@ -261,11 +261,11 @@ Regions can be created from simple geometric forms, such as rectangles, triangle
 Image segmentation leads to a foreground and/or background region.
 
 ```jldoctest reg
-julia> using FileIO, ImageIO, ImageMagick
+julia> ## using FileIO, ImageIO, ImageMagick
 
-julia> img = load("gear.png");
+julia> ## img = load("gear.png");
 
-julia> reg = binarize(img, px -> px < 0.9);
+julia> ## reg = binarize(img, px -> px < 0.9);
 ```
 
 The grayscale image of the gear is binarized, i.e. all pixels below 90 % brightness are contained in the region.
