@@ -263,7 +263,7 @@ Image segmentation leads to a foreground and/or background region.
 ```jldoctest reg
 julia> using FileIO, ImageIO, ImageMagick
 
-julia> img = load("../test/gear.png");
+julia> img = load("gear.png");
 
 julia> reg = binarize(img, px -> px < 0.9);
 ```
