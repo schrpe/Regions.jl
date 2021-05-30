@@ -130,17 +130,23 @@ Some examples of colors that you can pass:
 """
 function regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
     (l, t, r, b) = bounds(regions)
-    img = zeros(typeof(colors[1]), t-b+1, r-l+1)
-    color = 1
+    img = zeros(eltype(colors), t-b+1, r-l+1)
+    n = 1
     for region in regions 
         for run in region.runs
             for column in run.columns
-                img[run.row-b+1, column-l+1] = colors[color]
+                ca = color(colors[n])
+                aa = alpha(colors[n])
+                cb = color(img[run.row-b+1, column-l+1])
+                ab = alpha(img[run.row-b+1, column-l+1])
+                ac = aa + (1 - aa) * ab
+                cc = (aa * ca + (1 - aa) * ab * cb) / ac
+                img[run.row-b+1, column-l+1] = eltype(colors)(cc, ac)
             end
         end
-        color += 1
-        if (color > length(colors))
-            color = 1
+        n += 1
+        if (n > length(colors))
+            n = 1
         end
     end
     return img
