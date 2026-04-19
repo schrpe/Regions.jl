@@ -11,6 +11,8 @@ export left, top, right, bottom, bounds
 export complement
 export union, intersection, difference
 export region_from_box
+export region_from_circle
+export region_from_polygon
 export region_to_image
 
 """
@@ -531,6 +533,105 @@ function region_from_box(left::Integer, top::Integer, right::Integer, bottom::In
     for col in left:right
         push!(region.runs, Run(col, bottom:top))
     end
+    return region
+end
+
+"""
+    region_from_circle(cx::Integer, cy::Integer, radius::Integer)
+
+Create a filled circular region with center `(cx, cy)` and the given `radius`.
+
+All integer coordinates `(x, y)` satisfying `(x − cx)² + (y − cy)² ≤ radius²` are
+included. Integer square root is used to avoid floating-point rounding issues.
+
+```jldoctest
+julia> using Regions
+
+julia> region_from_circle(0, 0, 0)
+Region(Run[Run(0, 0:0)], false)
+
+julia> region_from_circle(0, 0, 2)
+Region(Run[Run(-2, 0:0), Run(-1, -1:1), Run(0, -2:2), Run(1, -1:1), Run(2, 0:0)], false)
+
+julia> contains(region_from_circle(0, 0, 5), 0, 5)
+true
+
+julia> contains(region_from_circle(0, 0, 5), 4, 4)
+false
+```
+"""
+function region_from_circle(cx::Integer, cy::Integer, radius::Integer)
+    @assert radius >= 0 "radius must be non-negative"
+    region = Region(Run[])
+    for col in (cx - radius):(cx + radius)
+        dx = col - cx
+        dy = isqrt(radius^2 - dx^2)
+        push!(region.runs, Run(col, (cy - dy):(cy + dy)))
+    end
+    return region
+end
+
+"""
+    region_from_polygon(vertices::Vector{Tuple{Int,Int}})
+
+Create a filled region from a polygon defined by its `vertices` as `(column, row)` pairs,
+given in either clockwise or counter-clockwise order.
+
+The fill uses the half-open interval convention: for each edge the column with the smaller
+x-coordinate is included and the column with the larger x-coordinate is excluded. As a
+result, the rightmost column of the polygon is not filled. Horizontal edges are ignored.
+
+```jldoctest
+julia> using Regions
+
+julia> r = region_from_polygon([(0,0), (4,0), (2,4)]);
+
+julia> length(r.runs)
+4
+
+julia> r.runs
+4-element Vector{Run}:
+ Run(0, 0:0)
+ Run(1, 0:2)
+ Run(2, 0:4)
+ Run(3, 0:2)
+
+julia> contains(r, 2, 2)
+true
+
+julia> contains(r, 0, 2)
+false
+```
+"""
+function region_from_polygon(vertices::Vector{Tuple{Int,Int}})
+    n = length(vertices)
+    @assert n >= 3 "polygon must have at least 3 vertices"
+
+    col_min = minimum(v[1] for v in vertices)
+    col_max = maximum(v[1] for v in vertices)
+
+    region = Region(Run[])
+
+    for col in col_min:col_max
+        ys = Float64[]
+        for i in 1:n
+            x1, y1 = vertices[i]
+            x2, y2 = vertices[mod1(i + 1, n)]
+            if min(x1, x2) <= col < max(x1, x2)
+                t = (col - x1) / (x2 - x1)
+                push!(ys, y1 + t * (y2 - y1))
+            end
+        end
+        sort!(ys)
+        for i in 1:2:length(ys) - 1
+            y_start = ceil(Int, ys[i])
+            y_end   = floor(Int, ys[i + 1])
+            if y_start <= y_end
+                push!(region.runs, Run(col, y_start:y_end))
+            end
+        end
+    end
+
     return region
 end
 

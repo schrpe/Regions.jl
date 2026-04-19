@@ -288,6 +288,35 @@ false
 
 The result contains one vertical run per column, each spanning from `bottom` to `top`.
 
+`region_from_polygon` creates a filled region from an arbitrary polygon given as a vector of
+`(column, row)` vertex pairs, in clockwise or counter-clockwise order.
+
+```jldoctest reg
+julia> tri = region_from_polygon([(0,0), (4,0), (2,4)]);
+
+julia> length(tri.runs)
+4
+
+julia> contains(tri, 2, 2)
+true
+```
+
+`region_from_circle` creates a filled circular region from a center point and radius. All
+integer coordinates within the circle (satisfying `(x−cx)² + (y−cy)² ≤ r²`) are included.
+
+```jldoctest reg
+julia> c = region_from_circle(0, 0, 3);
+
+julia> contains(c, 0, 3)
+true
+
+julia> contains(c, 2, 2)
+true
+
+julia> contains(c, 3, 3)
+false
+```
+
 #### Build regions by segmentation
 
 Image segmentation turns a grayscale image into a region by applying a predicate to each pixel. Pixels for which the predicate returns `true` become part of the region.

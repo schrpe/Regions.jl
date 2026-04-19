@@ -278,6 +278,94 @@ end # "Complement"
 
 end # "region_from_box"
 
+@testset "region_from_circle" begin
+
+    # Radius 0: single pixel at center
+    r = region_from_circle(0, 0, 0)
+    @test length(r.runs) == 1
+    @test r.runs[1] == Run(0, 0:0)
+    @test r.complement == false
+
+    # Radius 2 centered at origin: known run structure
+    r = region_from_circle(0, 0, 2)
+    @test length(r.runs) == 5
+    @test r.runs[1] == Run(-2, 0:0)
+    @test r.runs[2] == Run(-1, -1:1)
+    @test r.runs[3] == Run(0, -2:2)
+    @test r.runs[4] == Run(1, -1:1)
+    @test r.runs[5] == Run(2, 0:0)
+
+    # Non-origin center: runs shift accordingly
+    r = region_from_circle(5, 10, 2)
+    @test r.runs[1] == Run(3, 10:10)
+    @test r.runs[3] == Run(5, 8:12)
+    @test r.runs[5] == Run(7, 10:10)
+
+    # Bounds match the bounding box of the circle
+    r = region_from_circle(3, 4, 5)
+    @test left(r)   == 3 - 5
+    @test right(r)  == 3 + 5
+    @test bottom(r) == 4 - 5
+    @test top(r)    == 4 + 5
+
+    # Interior points are contained
+    r = region_from_circle(0, 0, 5)
+    @test contains(r, 0, 0)
+    @test contains(r, 0, 5)
+    @test contains(r, 3, 4)   # 3² + 4² == 25 == r²
+
+    # Points outside are not contained
+    @test !contains(r, 4, 4)  # 4² + 4² == 32 > 25
+    @test !contains(r, 0, 6)
+
+    # Negative radius is forbidden
+    @test_throws AssertionError region_from_circle(0, 0, -1)
+
+end # "region_from_circle"
+
+@testset "region_from_polygon" begin
+
+    # Triangle (0,0),(4,0),(2,4): four runs, col 4 excluded by half-open rule
+    r = region_from_polygon([(0,0), (4,0), (2,4)])
+    @test length(r.runs) == 4
+    @test r.runs[1] == Run(0, 0:0)
+    @test r.runs[2] == Run(1, 0:2)
+    @test r.runs[3] == Run(2, 0:4)
+    @test r.runs[4] == Run(3, 0:2)
+    @test r.complement == false
+
+    # Interior point is contained
+    @test contains(r, 2, 2)
+    @test contains(r, 1, 1)
+
+    # Outside points are not contained
+    @test !contains(r, 0, 2)   # col 0 only covers row 0
+    @test !contains(r, 4, 0)   # col 4 excluded by half-open rule
+
+    # Rectangle (0,0),(4,0),(4,3),(0,3): columns 0..3, rows 0:3
+    r = region_from_polygon([(0,0), (4,0), (4,3), (0,3)])
+    @test length(r.runs) == 4
+    @test all(run -> run.rows == 0:3, r.runs)
+    @test r.runs[1].column == 0
+    @test r.runs[4].column == 3
+
+    # Clockwise and counter-clockwise winding produce the same fill
+    r_cw  = region_from_polygon([(0,0), (3,0), (3,3), (0,3)])
+    r_ccw = region_from_polygon([(0,3), (3,3), (3,0), (0,0)])
+    @test r_cw == r_ccw
+
+    # Negative coordinates
+    r = region_from_polygon([(-2,0), (2,0), (0,4)])
+    @test contains(r, 0, 2)
+    @test !contains(r, -3, 0)
+    @test r.runs[1] == Run(-2, 0:0)
+    @test r.runs[3] == Run(0, 0:4)
+
+    # Fewer than 3 vertices is forbidden
+    @test_throws AssertionError region_from_polygon([(0,0), (1,1)])
+
+end # "region_from_polygon"
+
 @testset "Set operations on empty regions" begin
 
     empty  = Region()
