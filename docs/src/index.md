@@ -321,6 +321,8 @@ false
 
 Image segmentation turns a grayscale image into a region by applying a predicate to each pixel. Pixels for which the predicate returns `true` become part of the region.
 
+`Regions` extends `Images.binarize` with a predicate-based method rather than defining a competing function. Julia's dispatch selects the correct method by the second argument type: a `Function` argument routes to the `Regions` method and returns a `Region`; an algorithm object such as `Otsu()` routes to the `Images` method unchanged. Because both packages export the same underlying function, loading both with `using` raises no ambiguity warning.
+
 ```jldoctest reg
 julia> img = [0.0 1.0 0.0; 0.0 1.0 0.0; 0.0 1.0 0.0];
 

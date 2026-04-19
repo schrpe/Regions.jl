@@ -18,6 +18,7 @@ Main module for Regions.jl - a set of types that model a discrete 2-dimensional 
 module Regions
 
 using Images
+import Images: binarize   # extend rather than shadow; Regions.binarize === Images.binarize
 
 export Run, Region
 export binarize, components
@@ -97,31 +98,26 @@ function _binarize_parallel(image, predicate, rows, columns)
 end
 
 """
-    binarize(image, predicate)
+    binarize(image, predicate::Function)
 
-Binarize an image and return a region.
+Extend `Images.binarize` with a predicate-based method that returns a `Region`.
 
-The predicate must be a function that takes a pixel value and returns a boolean result based
-on the pixel value.
+Scans `image` column by column and includes every pixel for which `predicate` returns
+`true`. Because the second argument is typed `::Function`, Julia's dispatch selects this
+method when a plain function or lambda is passed, while algorithm-based calls such as
+`binarize(img, Otsu())` continue to resolve to the `Images.binarize` method unchanged.
 
 For images with at least `$_BINARIZE_PARALLEL_THRESHOLD` columns and multiple threads
 available, the work is distributed across threads (one per column). Smaller images use a
 single-threaded path to avoid thread overhead.
 
-Here are some useful examples:
-
 ```julia
-# the returned region will contain all pixels > 0.3
-reg = binarize(img, x -> x > 0.3)
-
-# the returned region will contain all pixels <= 0.5
-reg = binarize(img, x -> x <= 0.5)
-
-# the returned region will contain all pixels between 0.3 and 0.8
-reg = binarize(img, x -> x > 0.3 && x < 0.8)
+reg = binarize(img, x -> x > 0.3)        # all pixels above 30 % brightness
+reg = binarize(img, x -> x <= 0.5)       # all pixels at most 50 % brightness
+reg = binarize(img, x -> 0.3 < x < 0.8) # pixels in the 30–80 % range
 ```
 """
-function binarize(image, predicate)
+function binarize(image, predicate::Function)
     rows, columns = size(image)
     if Threads.nthreads() > 1 && columns >= _BINARIZE_PARALLEL_THRESHOLD
         return _binarize_parallel(image, predicate, rows, columns)
