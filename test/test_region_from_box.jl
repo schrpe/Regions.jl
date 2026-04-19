@@ -3,25 +3,25 @@
 
 @testset "region_from_box" begin
 
-    # Basic box: 2 rows, 3 columns
+    # Basic box: columns 1..4, rows 2..3 → 4 vertical runs (one per column)
     r = region_from_box(1, 3, 4, 2)
-    @test length(r.runs) == 2
-    @test r.runs[1] == Run(2, 1:4)
-    @test r.runs[2] == Run(3, 1:4)
+    @test length(r.runs) == 4
+    @test r.runs[1] == Run(1, 2:3)
+    @test r.runs[4] == Run(4, 2:3)
     @test r.complement == false
 
-    # Single row (bottom == top - 1)
-    r = region_from_box(0, 1, 5, 0)
-    @test length(r.runs) == 2
-    @test r.runs[1] == Run(0, 0:5)
-    @test r.runs[2] == Run(1, 0:5)
+    # Narrow box: columns 0..2, rows 0..1 → 3 vertical runs
+    r = region_from_box(0, 1, 2, 0)
+    @test length(r.runs) == 3
+    @test r.runs[1] == Run(0, 0:1)
+    @test r.runs[3] == Run(2, 0:1)
 
-    # Negative coordinates
+    # Negative coordinates: columns -4..-2, rows -3..-1 → 3 vertical runs
     r = region_from_box(-4, -1, -2, -3)
     @test length(r.runs) == 3
-    @test r.runs[1] == Run(-3, -4:-2)
-    @test r.runs[2] == Run(-2, -4:-2)
-    @test r.runs[3] == Run(-1, -4:-2)
+    @test r.runs[1] == Run(-4, -3:-1)
+    @test r.runs[2] == Run(-3, -3:-1)
+    @test r.runs[3] == Run(-2, -3:-1)
 
     # Bounds of the resulting region match box arguments
     r = region_from_box(2, 7, 9, 4)

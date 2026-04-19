@@ -1,10 +1,10 @@
 # Unit tests for complement regions in set operations.
 # This file is supposed to be included from runtests.jl.
 
-# Test fixtures: A = [0,5], B = [3,8] in row 0
+# Test fixtures: A = column 0, rows 0..5; B = column 0, rows 3..8
 # Derived facts (used throughout):
-#   A ∩ B = [3,5]     A ∪ B = [0,8]
-#   A \ B = [0,2]     B \ A = [6,8]
+#   A ∩ B = Run(0, 3:5)     A ∪ B = Run(0, 0:8)
+#   A \ B = Run(0, 0:2)     B \ A = Run(0, 6:8)
 
 @testset "Complement" begin
 
@@ -18,9 +18,9 @@
 
     # contains() inverts for complement regions
     cA = complement(A)
-    @test !contains(cA, 2, 0)   # col 2 is inside A → not in complement(A)
-    @test contains(cA, 7, 0)    # col 7 is outside A → in complement(A)
-    @test contains(cA, 0, 1)    # row 1 has no run → in complement(A)
+    @test !contains(cA, 0, 2)   # row 2 in col 0 is inside A → not in complement(A)
+    @test contains(cA, 0, 7)    # row 7 in col 0 is outside A → in complement(A)
+    @test contains(cA, 1, 0)    # col 1 has no run → in complement(A)
 
     # union(complement(A), complement(B)) = complement(A ∩ B)   [DeMorgan]
     r = union(complement(A), complement(B))
@@ -68,11 +68,11 @@
     @test r.runs == intersection(A, B).runs   # [Run(0, 3:5)]
 
     # Verify with contains() that membership is correct for a sample case
-    # intersection(A, complement(B)) should be A \ B = columns 0..2
+    # intersection(A, complement(B)) should be A \ B = column 0, rows 0..2
     r = intersection(A, complement(B))
-    @test contains(r, 0, 0)    # col 0 ∈ A \ B
-    @test contains(r, 2, 0)    # col 2 ∈ A \ B
-    @test !contains(r, 3, 0)   # col 3 ∉ A \ B  (it's in B)
-    @test !contains(r, 7, 0)   # col 7 ∉ A \ B  (it's only in B)
+    @test contains(r, 0, 0)    # (col=0, row=0) ∈ A \ B
+    @test contains(r, 0, 2)    # (col=0, row=2) ∈ A \ B
+    @test !contains(r, 0, 3)   # (col=0, row=3) ∉ A \ B  (it's in B)
+    @test !contains(r, 0, 7)   # (col=0, row=7) ∉ A \ B  (it's only in B)
 
 end # "Complement"

@@ -12,29 +12,29 @@ using Images: Gray, RGBA
     @test ismissing(right(Region[]))
     @test ismissing(bottom(Region[]))
 
-    # Single region with one run
-    regions = [Region([Run(2, 3:5)])]
-    @test left(regions)   == 3
-    @test top(regions)    == 2
+    # Single region, single run: Run(col, rows) — col=5, rows=1:4
+    regions = [Region([Run(5, 1:4)])]
+    @test left(regions)   == 5
     @test right(regions)  == 5
-    @test bottom(regions) == 2
-    @test bounds(regions) == (3, 2, 5, 2)
-
-    # Single region with multiple runs
-    regions = [Region([Run(1, 3:5), Run(4, 7:9)])]
-    @test left(regions)   == 3
     @test top(regions)    == 4
-    @test right(regions)  == 9
     @test bottom(regions) == 1
-    @test bounds(regions) == (3, 4, 9, 1)
+    @test bounds(regions) == (5, 4, 5, 1)
+
+    # Single region, multiple runs spanning different columns
+    regions = [Region([Run(3, 1:5), Run(9, 4:7)])]
+    @test left(regions)   == 3
+    @test right(regions)  == 9
+    @test top(regions)    == 7
+    @test bottom(regions) == 1
+    @test bounds(regions) == (3, 7, 9, 1)
 
     # Two regions: bounds span both
-    regions = [Region([Run(1, 3:5)]), Region([Run(4, 7:9)])]
+    regions = [Region([Run(3, 1:5)]), Region([Run(9, 4:7)])]
     @test left(regions)   == 3
-    @test top(regions)    == 4
     @test right(regions)  == 9
+    @test top(regions)    == 7
     @test bottom(regions) == 1
-    @test bounds(regions) == (3, 4, 9, 1)
+    @test bounds(regions) == (3, 7, 9, 1)
 
     # Three regions
     regions = [
@@ -43,59 +43,59 @@ using Images: Gray, RGBA
         Region([Run(2, 1:6)])
     ]
     @test left(regions)   == 0
-    @test top(regions)    == 5
-    @test right(regions)  == 6
+    @test right(regions)  == 5
+    @test top(regions)    == 6
     @test bottom(regions) == 0
-    @test bounds(regions) == (0, 5, 6, 0)
+    @test bounds(regions) == (0, 6, 5, 0)
 
 end # "bounds(Vector{Region})"
 
 @testset "region_to_image" begin
 
-    # Single-pixel region → 1x1 image, pixel is set
+    # Single-pixel region: col=1, row=1 → 1×1 image
     r = Region([Run(1, 1:1)])
     img = region_to_image(r)
     @test size(img) == (1, 1)
     @test img[1, 1] == Gray(true)
 
-    # 1x3 region
+    # Vertical run: col=1, rows=1:3 → 3 rows × 1 col image
     r = Region([Run(1, 1:3)])
     img = region_to_image(r)
-    @test size(img) == (1, 3)
+    @test size(img) == (3, 1)
     @test all(img .== Gray(true))
 
-    # 2x3 solid region
+    # Solid 3×2 region: 2 columns × 3 rows
     r = Region([Run(1, 1:3), Run(2, 1:3)])
     img = region_to_image(r)
-    @test size(img) == (2, 3)
+    @test size(img) == (3, 2)
     @test all(img .== Gray(true))
 
     # Region not at origin: image is cropped to bounding box
     r = Region([Run(5, 10:12)])
     img = region_to_image(r)
-    @test size(img) == (1, 3)
+    @test size(img) == (3, 1)
     @test all(img .== Gray(true))
 
-    # Sparse region: rows 1 and 3, row 2 stays zero
+    # Sparse region: columns 1 and 3 only; column 2 stays zero
     r = Region([Run(1, 1:2), Run(3, 1:2)])
     img = region_to_image(r)
-    @test size(img) == (3, 2)             # rows: 3-1+1=3, cols: 2-1+1=2
-    @test all(img[1, :] .== Gray(true))   # bottom row (row=1 → index 1)
-    @test all(img[2, :] .== Gray(false))  # row=2 has no runs → zero
-    @test all(img[3, :] .== Gray(true))   # top row (row=3 → index 3)
+    @test size(img) == (2, 3)              # rows: 2-1+1=2, cols: 3-1+1=3
+    @test all(img[:, 1] .== Gray(true))   # column 1 set
+    @test all(img[:, 2] .== Gray(false))  # column 2 empty
+    @test all(img[:, 3] .== Gray(true))   # column 3 set
 
-    # Custom color
+    # Custom color: col=1, rows=1:2 → 2×1 image
     r = Region([Run(1, 1:2)])
     img = region_to_image(r, Gray(0.5))
-    @test size(img) == (1, 2)
+    @test size(img) == (2, 1)
     @test img[1, 1] ≈ Gray(0.5)
-    @test img[1, 2] ≈ Gray(0.5)
+    @test img[2, 1] ≈ Gray(0.5)
 
 end # "region_to_image"
 
 @testset "regions_to_image" begin
 
-    # Single opaque region fills with the color
+    # Single opaque region: 2 cols × 2 rows → 2×2 image
     r = Region([Run(1, 1:2), Run(2, 1:2)])
     img = regions_to_image([r], [RGBA{Float64}(1, 0, 0, 1)])
     @test size(img) == (2, 2)
@@ -107,22 +107,21 @@ end # "region_to_image"
     @test size(img) == (1, 1)
     @test img[1, 1] ≈ RGBA{Float64}(1, 0, 0, 1)
 
-    # Two non-overlapping regions: each gets its own color
+    # Two non-overlapping regions: col 1 gets red, col 3 gets green, col 2 is empty
     r1 = Region([Run(1, 1:2)])
     r2 = Region([Run(3, 1:2)])
     img = regions_to_image([r1, r2], [RGBA{Float64}(1, 0, 0, 1), RGBA{Float64}(0, 1, 0, 1)])
-    @test size(img) == (3, 2)   # rows 1 to 3
-    @test all(p -> p ≈ RGBA{Float64}(1, 0, 0, 1), img[1, :])   # r1 at bottom row
-    @test all(p -> p ≈ RGBA{Float64}(0, 0, 0, 0), img[2, :])   # empty row
-    @test all(p -> p ≈ RGBA{Float64}(0, 1, 0, 1), img[3, :])   # r2 at top row
+    @test size(img) == (2, 3)
+    @test all(p -> p ≈ RGBA{Float64}(1, 0, 0, 1), img[:, 1])
+    @test all(p -> p ≈ RGBA{Float64}(0, 0, 0, 0), img[:, 2])
+    @test all(p -> p ≈ RGBA{Float64}(0, 1, 0, 1), img[:, 3])
 
-    # Color cycling: more regions than colors
+    # Color cycling: more regions than colors → single color applied to all
     r1 = Region([Run(1, 1:1)])
     r2 = Region([Run(2, 1:1)])
     r3 = Region([Run(3, 1:1)])
     img = regions_to_image([r1, r2, r3], [RGBA{Float64}(1, 0, 0, 1)])
-    @test size(img) == (3, 1)
-    # All three get the same (only) color
+    @test size(img) == (1, 3)
     @test all(p -> p ≈ RGBA{Float64}(1, 0, 0, 1), img)
 
 end # "regions_to_image"

@@ -31,11 +31,11 @@ Regions can be used for various purposes in machine vision and image processing.
 
 A region can be seen as a set of discrete coordinates in the cartesian plane. In fact, one of the main motivations for the region concept was to model a set of pixel locations for image processing purposes.
 
-A region is represented with a sorted list of horizontal runs. Runs themselves are represented with a horizontal columns range and a vertical row coordinate.
+A region is represented with a sorted list of vertical runs. Runs themselves are represented with a column coordinate and a range of vertical row coordinates.
 
 ![Region and runs](region_and_runs.svg)
 
-Here is how this region can be created using the Julia REPL (assuming the origin (0, 0) is at the upper left):
+Here is how this region can be created using the Julia REPL. Each `Run(column, rows)` specifies a vertical span of pixels in a given column:
 
 ```jldoctest reg
 julia> Region([Run(0, 1:4), Run(1, 0:5), Run(2, 1:2), Run(2, 4:6), Run(3, 1:2), Run(3, 5:5), Run(4, 1:2), Run(4, 4:5), Run(5, 2:4)])
@@ -154,9 +154,9 @@ false
 
 ### Run
 
-A run combines a vertical row coordinate with a range of horizontal columns coordinates.
+A run combines a column coordinate with a range of vertical row coordinates.
 
-An empty run is a run whose columns range is empty.
+An empty run is a run whose rows range is empty.
 
 ```jldoctest reg
 julia> isempty(Run(0, 0:-1))
@@ -166,7 +166,7 @@ julia> isempty(Run(0, 0:100))
 false
 ```
 
-The natural sort order of runs is to sort them by their row, then by their columns range.
+The natural sort order of runs is to sort them by their column, then by their rows range.
 
 ```jldoctest reg
 julia> Run(0, 0:100) < Run(1, 0:100)
@@ -176,7 +176,7 @@ julia> Run(0, 0:100) < Run(0, 1:101)
 true
 ```
 
-Inversion mirrors a run at the origin, both in the horizontal and in the vertical direction.
+Inversion mirrors a run at the origin, in both the horizontal and vertical directions.
 
 ```jldoctest reg
 julia> invert(Run(10, 50:100))
@@ -190,13 +190,13 @@ Translation moves a run by horizontal and vertical offsets.
 
 ```jldoctest reg
 julia> translate(Run(0, 0:100), 10, 20)
-Run(20, 10:110)
+Run(10, 20:120)
 
 julia> Run(0, 10:20) + [30, 40]
-Run(40, 40:50)
+Run(30, 50:60)
 
 julia> Run(0, 10:20) - [30, 40]
-Run(-40, -20:-10)
+Run(-30, -30:-20)
 ```
 
 ### Region
@@ -236,7 +236,7 @@ Region(Run[Run(-2, 0:0), Run(-1, 0:0), Run(0, -2:2), Run(1, 0:0), Run(2, 0:0)], 
 
 #### Build regions from runs
 
-Here is an example of a very simple 5x5 cross shaped region, centered on the origin:
+Here is an example of a very simple 5×5 cross shaped region, centered on the origin. It uses a vertical run for column 0 (spanning rows −2 to 2) and single-pixel runs at row 0 for columns −2, −1, 1, and 2:
 
 ```jldoctest reg
 julia> Region([Run(-2, 0:0), Run(-1, 0:0), Run(0, -2:2), Run(1, 0:0), Run(2, 0:0)])
