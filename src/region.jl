@@ -300,22 +300,6 @@ function merge(a::Vector{Run}, b::Vector{Run})
     return res
 end
 
-"""
-    sort(a::Vector{Run})
-
-Variant of sort that returns a sorted copy of a leaving a itself unmodified. This ensures that
-runs are sorted after an operation that might have destroyed the sort order, such as 
-downsampling.
-"""
-sort(a::Vector{Run}) = sort(a)
-
-"""
-    sort!(a::Vector{Run})
-
-Sort the vector a in place. This ensures that runs are sorted after an operation that might 
-have destroyed the sort order, such as downsampling.
-"""
-sort!(a::Vector{Run}) = sort!(a)
 
 """
     pack!(a::Vector{Run})
