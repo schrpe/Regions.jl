@@ -50,11 +50,12 @@ function binarize(image, predicate)
 
     rows, columns = size(image)
 
-    for column in 1:columns
+    @inbounds for column in 1:columns
+        col = view(image, :, column)
         inside_object = false
         start_row = 0
         for row in 1:rows
-            if predicate(image[row, column])
+            if predicate(col[row])
                 if !inside_object
                     inside_object = true
                     start_row = row
