@@ -59,7 +59,7 @@ invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
 """
     contains(x::UnitRange{Int64}, y::Integer)
 
-Test if range x contains value x.
+Test if range x contains value y.
 
 In addition to the contains method, you can also use the ∈ operator.
 

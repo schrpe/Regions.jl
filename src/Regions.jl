@@ -5,8 +5,10 @@ Main module for Regions.jl - a set of types that model a discrete 2-dimensional 
 
 # Exports
 
-* Run   
+* Run
 * Region
+* binarize
+* components
 
 # Dependencies
 

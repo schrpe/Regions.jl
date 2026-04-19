@@ -33,6 +33,8 @@ A region can be seen as a set of discrete coordinates in the cartesian plane. In
 
 A region is represented with a sorted list of vertical runs. Runs themselves are represented with a column coordinate and a range of vertical row coordinates.
 
+**Coordinate convention.** The horizontal axis is called *column* (x) and increases to the right. The vertical axis is called *row* (y) and increases downward, following Julia's matrix convention (`img[row, column]`). Consequently, `bottom(r)` returns the minimum row value — the row closest to the top of an image — and `top(r)` returns the maximum row value.
+
 ![Region and runs](region_and_runs.svg)
 
 Here is how this region can be created using the Julia REPL. Each `Run(column, rows)` specifies a vertical span of pixels in a given column:
@@ -199,6 +201,22 @@ julia> Run(0, 10:20) - [30, 40]
 Run(-30, -30:-20)
 ```
 
+Two runs can overlap or touch. They can only overlap if they share the same column.
+
+```jldoctest reg
+julia> isoverlapping(Run(3, 0:10), Run(3, 5:15))
+true
+
+julia> isoverlapping(Run(3, 0:10), Run(4, 0:10))
+false
+
+julia> istouching(Run(3, 0:10), Run(4, 5:15))
+true
+
+julia> istouching(Run(3, 0:10), Run(5, 5:15))
+false
+```
+
 ### Region
 
 A region is a subset of the discrete two-dimensional space. It represents a set (in the sense of mathematical set theory) of discrete coordinates. A region may be finite or infinite. A region may not be connected and it may contain holes.
@@ -252,20 +270,46 @@ Region(Run[Run(-2, 0:0), Run(-1, 0:0), Run(0, -2:2), Run(1, 0:0), Run(2, 0:0)], 
 
 #### Build regions from geometry
 
-Regions can be created from simple geometric forms, such as rectangles, triangles, polygons, lines and points to name a few.
+Regions can be created from simple geometric forms. `region_from_box` creates a filled rectangular region from its bounding box coordinates. The four arguments are `left`, `top`, `right`, `bottom`, where `top` > `bottom` and `right` > `left`.
 
-... explain the coordinate systems (integer coordinates are in the middle of pixels)
+```jldoctest reg
+julia> box = region_from_box(1, 4, 3, 1)
+Region(Run[Run(1, 1:4), Run(2, 1:4), Run(3, 1:4)], false)
+
+julia> bounds(box)
+(1, 4, 3, 1)
+
+julia> contains(box, 2, 3)
+true
+
+julia> contains(box, 0, 3)
+false
+```
+
+The result contains one vertical run per column, each spanning from `bottom` to `top`.
 
 #### Build regions by segmentation
 
-Image segmentation leads to a foreground and/or background region.
+Image segmentation turns a grayscale image into a region by applying a predicate to each pixel. Pixels for which the predicate returns `true` become part of the region.
 
 ```jldoctest reg
-julia> ## using FileIO, ImageIO, ImageMagick
+julia> img = [0.0 1.0 0.0; 0.0 1.0 0.0; 0.0 1.0 0.0];
 
-julia> ## img = load("gear.png");
+julia> seg = binarize(img, px -> px > 0.5);
 
-julia> ## reg = binarize(img, px -> px < 0.9);
+julia> length(seg.runs)
+1
+
+julia> seg.runs[1]
+Run(2, 1:3)
+```
+
+Here the 3×3 image has bright pixels only in column 2, producing a single run spanning all three rows. Real-world usage typically loads a grayscale image from disk and segments it:
+
+```julia
+using FileIO, ImageIO, ImageMagick
+img = load("gear.png")
+reg = binarize(img, px -> px < 0.9)
 ```
 
 The grayscale image of the gear is binarized, i.e. all pixels below 90 % brightness are contained in the region.

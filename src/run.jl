@@ -147,15 +147,18 @@ contains(r::Run, a::Vector{Int64}) = contains(r, a[1], a[2])
 """
     isoverlapping(x::Run, y::Run)
 
-Test if two runs overlap.
+Test if two runs overlap. Two runs can only overlap if they share the same column.
 
 ```jldoctest
 julia> using Regions
 
-julia> isoverlapping(0:10, 5:15)
+julia> isoverlapping(Run(3, 0:10), Run(3, 5:15))
 true
 
-julia> isoverlapping(0:10, 20:30)
+julia> isoverlapping(Run(3, 0:10), Run(3, 20:30))
+false
+
+julia> isoverlapping(Run(3, 0:10), Run(4, 0:10))
 false
 ```
 """

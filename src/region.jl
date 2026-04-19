@@ -154,7 +154,25 @@ translate!(r::Region, d::Vector{Int64}) = translate!(r, d[1], d[2])
     contains(r::Region, x::Integer, y::Integer)
     contains(r::Region, a::Array{Int64, 1})
 
-Test if region r contains position (x, y).
+Test if region r contains position (x, y). x is the column coordinate, y is the row coordinate.
+
+```jldoctest
+julia> using Regions
+
+julia> r = Region([Run(2, 1:4)]);
+
+julia> contains(r, 2, 3)
+true
+
+julia> contains(r, 2, 5)
+false
+
+julia> contains(r, 3, 3)
+false
+
+julia> [2, 3] ∈ r
+true
+```
 """
 contains(r::Region, x::Integer, y::Integer) = r.complement ? !any(run -> contains(run, x, y), r.runs) : any(run -> contains(run, x, y), r.runs)
 contains(r::Region, a::Array{Int64, 1}) = contains(r, a[1], a[2])
@@ -237,6 +255,26 @@ Calculates the set-theoretic complement of a region.
 With a non-complemented region, the runs specify the contained pixels, i.e. they specify
 what is included within the region. With a complemented region, the runs specify the
 non-contained pixels, i.e. they specify what is not included within the region.
+
+```jldoctest
+julia> using Regions
+
+julia> r = Region([Run(0, 0:5)]);
+
+julia> c = complement(r);
+
+julia> c.complement
+true
+
+julia> contains(r, 0, 3)
+true
+
+julia> contains(c, 0, 3)
+false
+
+julia> contains(c, 0, 9)
+true
+```
 """
 complement(x::Region) = Region(copy(x.runs), !x.complement)
 

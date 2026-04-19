@@ -11,9 +11,17 @@ export regions_to_image
     left(x::Vector{Region})
 
 Calculates the leftmost coordinate of a vector of regions.
+Returns `missing` for an empty vector.
 
-This function works for non-complement and non-empty regions only. The vector
-must not be empty.
+```jldoctest
+julia> using Regions
+
+julia> left([Region([Run(2, 1:3)]), Region([Run(7, 1:3)])])
+2
+
+julia> ismissing(left(Region[]))
+true
+```
 """
 function left(regions::Vector{Region})
     if !isempty(regions)
@@ -30,10 +38,18 @@ end
 """
     top(x::Vector{Region})
 
-Calculates the topmost region coordinate of a vector of regions.
+Calculates the maximum row coordinate across a vector of regions.
+Returns `missing` for an empty vector.
 
-This function works for non-complement and non-empty regions only. The vector
-must not be empty.
+```jldoctest
+julia> using Regions
+
+julia> top([Region([Run(2, 1:3)]), Region([Run(7, 2:6)])])
+6
+
+julia> ismissing(top(Region[]))
+true
+```
 """
 function top(regions::Vector{Region})
     if !isempty(regions)
@@ -50,10 +66,18 @@ end
 """
     right(x::Vector{Region})
 
-Calculates the rightmost region coordinate of a vector of regions.
+Calculates the rightmost coordinate of a vector of regions.
+Returns `missing` for an empty vector.
 
-This function works for non-complement and non-empty regions only. The vector
-must not be empty.
+```jldoctest
+julia> using Regions
+
+julia> right([Region([Run(2, 1:3)]), Region([Run(7, 1:3)])])
+7
+
+julia> ismissing(right(Region[]))
+true
+```
 """
 function right(regions::Vector{Region})
     if !isempty(regions)
@@ -70,10 +94,18 @@ end
 """
     bottom(x::Vector{Region})
 
-Calculates the bottommost region coordinate of a vector of regions.
+Calculates the minimum row coordinate across a vector of regions.
+Returns `missing` for an empty vector.
 
-This function works for non-complement and non-empty regions only. The vector
-must not be empty.
+```jldoctest
+julia> using Regions
+
+julia> bottom([Region([Run(2, 1:3)]), Region([Run(7, 5:8)])])
+1
+
+julia> ismissing(bottom(Region[]))
+true
+```
 """
 function bottom(regions::Vector{Region})
     if !isempty(regions)
@@ -90,11 +122,18 @@ end
 """
     bounds(x::Vector{Region})
 
-Calculates the left, top, right and bottom region coordinate of a vector of regions
-and returns them as a tuple.
+Calculates `(left, top, right, bottom)` — the minimum column, maximum row, maximum column,
+and minimum row — across all regions in the vector. Returns `missing` for an empty vector.
 
-This function works for non-complement and non-empty regions only. The vector
-must not be empty.
+```jldoctest
+julia> using Regions
+
+julia> bounds([Region([Run(2, 1:3)]), Region([Run(7, 2:6)])])
+(2, 6, 7, 1)
+
+julia> ismissing(bounds(Region[]))
+true
+```
 """
 function bounds(regions::Vector{Region})
     if !isempty(regions)
@@ -115,17 +154,17 @@ function bounds(regions::Vector{Region})
 end
 
 """
-    regions_to_image(r::Region, color=Gray(true))
+    regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
 
 Converts a vector of regions to an image. The function determines the bounds of the
 regions and then renders the regions into the image.
 
 The background of the image is filled with zeroes, the region pixels are
-colored with the passed in colors.
+colored with the passed in colors. Colors are cycled when there are more regions than colors.
 
 Some examples of colors that you can pass:
-[Gray(0.5)] : mid gray value
-[RGB(1, 0, 0), RGB(1, 0, 0), RGB(1, 0, 0)] : cycle through red, green and blue
+[Gray(0.5)] : mid gray value applied to all regions
+[RGB(1, 0, 0), RGB(0, 1, 0), RGB(0, 0, 1)] : cycle through red, green and blue
 [RGBA(0, 0.5, 0, 0.5), RGBA(0.5, 0, 0, 0.5)] : half transparent mid green and mid red values
 """
 function regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
