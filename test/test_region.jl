@@ -1,5 +1,7 @@
-# Unit tests for Region type.
+# Unit tests for Region type and related functions.
 # This file is supposed to be included from runtests.jl.
+
+using Images: Gray, RGBA
 
 @testset "Region" begin
     @test length(Region().runs) == 0
@@ -148,3 +150,423 @@
     @test difference([Run(0, 0:2)], [Run(0, 2:2)]) == [Run(0, 0:1)]
 
 end # "Region"
+
+# Test fixtures: A = column 0, rows 0..5; B = column 0, rows 3..8
+# Derived facts (used throughout):
+#   A ∩ B = Run(0, 3:5)     A ∪ B = Run(0, 0:8)
+#   A \ B = Run(0, 0:2)     B \ A = Run(0, 6:8)
+
+@testset "Complement" begin
+
+    A = Region([Run(0, 0:5)])
+    B = Region([Run(0, 3:8)])
+
+    # complement() flips the complement flag and preserves runs
+    @test complement(A).complement == true
+    @test complement(A).runs == A.runs
+    @test complement(complement(A)) == A
+
+    # contains() inverts for complement regions
+    cA = complement(A)
+    @test !contains(cA, 0, 2)   # row 2 in col 0 is inside A → not in complement(A)
+    @test contains(cA, 0, 7)    # row 7 in col 0 is outside A → in complement(A)
+    @test contains(cA, 1, 0)    # col 1 has no run → in complement(A)
+
+    # union(complement(A), complement(B)) = complement(A ∩ B)   [DeMorgan]
+    r = union(complement(A), complement(B))
+    @test r.complement == true
+    @test r.runs == intersection(A, B).runs   # runs of A ∩ B = [Run(0, 3:5)]
+
+    # union(complement(A), B) = complement(A \ B)
+    r = union(complement(A), B)
+    @test r.complement == true
+    @test r.runs == difference(A, B).runs     # runs of A \ B = [Run(0, 0:2)]
+
+    # union(A, complement(B)) = complement(B \ A)
+    r = union(A, complement(B))
+    @test r.complement == true
+    @test r.runs == difference(B, A).runs     # runs of B \ A = [Run(0, 6:8)]
+
+    # intersection(complement(A), complement(B)) = complement(A ∪ B)   [DeMorgan]
+    r = intersection(complement(A), complement(B))
+    @test r.complement == true
+    @test r.runs == union(A, B).runs          # runs of A ∪ B = [Run(0, 0:8)]
+
+    # intersection(complement(A), B) = B \ A
+    r = intersection(complement(A), B)
+    @test r.complement == false
+    @test r.runs == difference(B, A).runs     # [Run(0, 6:8)]
+
+    # intersection(A, complement(B)) = A \ B
+    r = intersection(A, complement(B))
+    @test r.complement == false
+    @test r.runs == difference(A, B).runs     # [Run(0, 0:2)]
+
+    # difference(complement(A), complement(B)) = B \ A
+    r = difference(complement(A), complement(B))
+    @test r.complement == false
+    @test r.runs == difference(B, A).runs     # [Run(0, 6:8)]
+
+    # difference(complement(A), B) = complement(A ∪ B)
+    r = difference(complement(A), B)
+    @test r.complement == true
+    @test r.runs == union(A, B).runs          # runs of A ∪ B = [Run(0, 0:8)]
+
+    # difference(A, complement(B)) = A ∩ B
+    r = difference(A, complement(B))
+    @test r.complement == false
+    @test r.runs == intersection(A, B).runs   # [Run(0, 3:5)]
+
+    # Verify with contains() that membership is correct for a sample case
+    # intersection(A, complement(B)) should be A \ B = column 0, rows 0..2
+    r = intersection(A, complement(B))
+    @test contains(r, 0, 0)    # (col=0, row=0) ∈ A \ B
+    @test contains(r, 0, 2)    # (col=0, row=2) ∈ A \ B
+    @test !contains(r, 0, 3)   # (col=0, row=3) ∉ A \ B  (it's in B)
+    @test !contains(r, 0, 7)   # (col=0, row=7) ∉ A \ B  (it's only in B)
+
+end # "Complement"
+
+@testset "region_from_box" begin
+
+    # Basic box: columns 1..4, rows 2..3 → 4 vertical runs (one per column)
+    r = region_from_box(1, 3, 4, 2)
+    @test length(r.runs) == 4
+    @test r.runs[1] == Run(1, 2:3)
+    @test r.runs[4] == Run(4, 2:3)
+    @test r.complement == false
+
+    # Narrow box: columns 0..2, rows 0..1 → 3 vertical runs
+    r = region_from_box(0, 1, 2, 0)
+    @test length(r.runs) == 3
+    @test r.runs[1] == Run(0, 0:1)
+    @test r.runs[3] == Run(2, 0:1)
+
+    # Negative coordinates: columns -4..-2, rows -3..-1 → 3 vertical runs
+    r = region_from_box(-4, -1, -2, -3)
+    @test length(r.runs) == 3
+    @test r.runs[1] == Run(-4, -3:-1)
+    @test r.runs[2] == Run(-3, -3:-1)
+    @test r.runs[3] == Run(-2, -3:-1)
+
+    # Bounds of the resulting region match box arguments
+    r = region_from_box(2, 7, 9, 4)
+    @test left(r)   == 2
+    @test right(r)  == 9
+    @test bottom(r) == 4
+    @test top(r)    == 7
+
+    # Every pixel inside the box is contained
+    r = region_from_box(0, 2, 3, 0)
+    @test contains(r, 0, 0)
+    @test contains(r, 3, 2)
+    @test contains(r, 1, 1)
+
+    # Pixels outside the box are not contained
+    @test !contains(r, -1, 0)
+    @test !contains(r, 4, 0)
+    @test !contains(r, 0, -1)
+    @test !contains(r, 0, 3)
+
+    # Assertion fires when bottom >= top
+    @test_throws AssertionError region_from_box(0, 1, 5, 1)
+    @test_throws AssertionError region_from_box(0, 0, 5, 1)
+
+    # Assertion fires when left >= right
+    @test_throws AssertionError region_from_box(5, 2, 5, 0)
+    @test_throws AssertionError region_from_box(6, 2, 5, 0)
+
+end # "region_from_box"
+
+@testset "Set operations on empty regions" begin
+
+    empty  = Region()
+    single = Region([Run(0, 1:3)])
+
+    # complement of empty region
+    ce = complement(empty)
+    @test ce.complement == true
+    @test isempty(ce.runs)
+    @test contains(ce, 0, 0)     # complement of empty contains everything
+    @test contains(ce, 99, -99)
+
+    # complement of complement of empty is empty again
+    @test complement(ce) == empty
+
+    # union: empty ∪ A = A
+    @test union(empty, single) == single
+    @test union(single, empty) == single
+    @test union(empty, empty)  == empty
+
+    # intersection: empty ∩ A = empty
+    @test intersection(empty, single) == empty
+    @test intersection(single, empty) == empty
+    @test intersection(empty, empty)  == empty
+
+    # difference: empty \ A = empty, A \ empty = A
+    @test difference(empty, single) == empty
+    @test difference(single, empty) == single
+    @test difference(empty, empty)  == empty
+
+    # union with complement(empty) = complement(empty) (everything)
+    @test union(single, complement(empty)) == complement(empty)
+    @test union(complement(empty), single) == complement(empty)
+
+    # intersection with complement(empty) = identity
+    @test intersection(single, complement(empty)) == single
+    @test intersection(complement(empty), single) == single
+
+    # difference A \ complement(empty) = empty  (removing "everything" leaves nothing)
+    @test difference(single, complement(empty)) == empty
+
+    # difference complement(empty) \ A = complement(A)  (everything minus A)
+    @test difference(complement(empty), single) == complement(single)
+
+end # "Set operations on empty regions"
+
+@testset "bounds(Vector{Region})" begin
+
+    # Empty vector → missing
+    @test ismissing(bounds(Region[]))
+    @test ismissing(left(Region[]))
+    @test ismissing(top(Region[]))
+    @test ismissing(right(Region[]))
+    @test ismissing(bottom(Region[]))
+
+    # Single region, single run: Run(col, rows) — col=5, rows=1:4
+    regions = [Region([Run(5, 1:4)])]
+    @test left(regions)   == 5
+    @test right(regions)  == 5
+    @test top(regions)    == 4
+    @test bottom(regions) == 1
+    @test bounds(regions) == (5, 4, 5, 1)
+
+    # Single region, multiple runs spanning different columns
+    regions = [Region([Run(3, 1:5), Run(9, 4:7)])]
+    @test left(regions)   == 3
+    @test right(regions)  == 9
+    @test top(regions)    == 7
+    @test bottom(regions) == 1
+    @test bounds(regions) == (3, 7, 9, 1)
+
+    # Two regions: bounds span both
+    regions = [Region([Run(3, 1:5)]), Region([Run(9, 4:7)])]
+    @test left(regions)   == 3
+    @test right(regions)  == 9
+    @test top(regions)    == 7
+    @test bottom(regions) == 1
+    @test bounds(regions) == (3, 7, 9, 1)
+
+    # Three regions
+    regions = [
+        Region([Run(0, 0:1)]),
+        Region([Run(5, 3:4)]),
+        Region([Run(2, 1:6)])
+    ]
+    @test left(regions)   == 0
+    @test right(regions)  == 5
+    @test top(regions)    == 6
+    @test bottom(regions) == 0
+    @test bounds(regions) == (0, 6, 5, 0)
+
+end # "bounds(Vector{Region})"
+
+@testset "region_to_image" begin
+
+    # Single-pixel region: col=1, row=1 → 1×1 image
+    r = Region([Run(1, 1:1)])
+    img = region_to_image(r)
+    @test size(img) == (1, 1)
+    @test img[1, 1] == Gray(true)
+
+    # Vertical run: col=1, rows=1:3 → 3 rows × 1 col image
+    r = Region([Run(1, 1:3)])
+    img = region_to_image(r)
+    @test size(img) == (3, 1)
+    @test all(img .== Gray(true))
+
+    # Solid 3×2 region: 2 columns × 3 rows
+    r = Region([Run(1, 1:3), Run(2, 1:3)])
+    img = region_to_image(r)
+    @test size(img) == (3, 2)
+    @test all(img .== Gray(true))
+
+    # Region not at origin: image is cropped to bounding box
+    r = Region([Run(5, 10:12)])
+    img = region_to_image(r)
+    @test size(img) == (3, 1)
+    @test all(img .== Gray(true))
+
+    # Sparse region: columns 1 and 3 only; column 2 stays zero
+    r = Region([Run(1, 1:2), Run(3, 1:2)])
+    img = region_to_image(r)
+    @test size(img) == (2, 3)              # rows: 2-1+1=2, cols: 3-1+1=3
+    @test all(img[:, 1] .== Gray(true))   # column 1 set
+    @test all(img[:, 2] .== Gray(false))  # column 2 empty
+    @test all(img[:, 3] .== Gray(true))   # column 3 set
+
+    # Custom color: col=1, rows=1:2 → 2×1 image
+    r = Region([Run(1, 1:2)])
+    img = region_to_image(r, Gray(0.5))
+    @test size(img) == (2, 1)
+    @test img[1, 1] ≈ Gray(0.5)
+    @test img[2, 1] ≈ Gray(0.5)
+
+end # "region_to_image"
+
+@testset "regions_to_image" begin
+
+    # Single opaque region: 2 cols × 2 rows → 2×2 image
+    r = Region([Run(1, 1:2), Run(2, 1:2)])
+    img = regions_to_image([r], [RGBA{Float64}(1, 0, 0, 1)])
+    @test size(img) == (2, 2)
+    @test all(p -> p ≈ RGBA{Float64}(1, 0, 0, 1), img)
+
+    # Background pixels remain zero
+    r = Region([Run(1, 1:1)])
+    img = regions_to_image([r], [RGBA{Float64}(1, 0, 0, 1)])
+    @test size(img) == (1, 1)
+    @test img[1, 1] ≈ RGBA{Float64}(1, 0, 0, 1)
+
+    # Two non-overlapping regions: col 1 gets red, col 3 gets green, col 2 is empty
+    r1 = Region([Run(1, 1:2)])
+    r2 = Region([Run(3, 1:2)])
+    img = regions_to_image([r1, r2], [RGBA{Float64}(1, 0, 0, 1), RGBA{Float64}(0, 1, 0, 1)])
+    @test size(img) == (2, 3)
+    @test all(p -> p ≈ RGBA{Float64}(1, 0, 0, 1), img[:, 1])
+    @test all(p -> p ≈ RGBA{Float64}(0, 0, 0, 0), img[:, 2])
+    @test all(p -> p ≈ RGBA{Float64}(0, 1, 0, 1), img[:, 3])
+
+    # Color cycling: more regions than colors → single color applied to all
+    r1 = Region([Run(1, 1:1)])
+    r2 = Region([Run(2, 1:1)])
+    r3 = Region([Run(3, 1:1)])
+    img = regions_to_image([r1, r2, r3], [RGBA{Float64}(1, 0, 0, 1)])
+    @test size(img) == (1, 3)
+    @test all(p -> p ≈ RGBA{Float64}(1, 0, 0, 1), img)
+
+end # "regions_to_image"
+
+@testset "binarize" begin
+
+    # Empty image produces empty region
+    @test isempty(binarize(zeros(Float64, 0, 0), x -> x > 0.5))
+
+    # All-dark image produces empty region
+    @test isempty(binarize(zeros(Float64, 3, 4), x -> x > 0.5))
+
+    # All-bright 2×3 image: 3 columns → 3 vertical runs (one per column)
+    img = ones(Float64, 2, 3)
+    r = binarize(img, x -> x > 0.5)
+    @test length(r.runs) == 3
+    @test r.runs[1] == Run(1, 1:2)
+    @test r.runs[2] == Run(2, 1:2)
+    @test r.runs[3] == Run(3, 1:2)
+
+    # Single bright pixel at img[2, 3] (row=2, col=3) in 4×4 image
+    img = zeros(Float64, 4, 4)
+    img[2, 3] = 1.0
+    r = binarize(img, x -> x > 0.5)
+    @test length(r.runs) == 1
+    @test r.runs[1] == Run(3, 2:2)
+
+    # Vertical run touching top of column: img[1:3, 2] in 5×3 image
+    img = zeros(Float64, 5, 3)
+    img[1:3, 2] .= 1.0
+    r = binarize(img, x -> x > 0.5)
+    @test length(r.runs) == 1
+    @test r.runs[1] == Run(2, 1:3)
+
+    # Vertical run touching bottom of column: img[3:5, 2] in 5×3 image
+    img = zeros(Float64, 5, 3)
+    img[3:5, 2] .= 1.0
+    r = binarize(img, x -> x > 0.5)
+    @test length(r.runs) == 1
+    @test r.runs[1] == Run(2, 3:5)
+
+    # Vertical run spanning entire column: img[:, 2] in 4×3 image
+    img = zeros(Float64, 4, 3)
+    img[:, 2] .= 1.0
+    r = binarize(img, x -> x > 0.5)
+    @test length(r.runs) == 1
+    @test r.runs[1] == Run(2, 1:4)
+
+    # Two separate vertical runs in one column: rows 1:2 and 5:7 in a 7×1 image
+    img = zeros(Float64, 7, 1)
+    img[1:2, 1] .= 1.0
+    img[5:7, 1] .= 1.0
+    r = binarize(img, x -> x > 0.5)
+    @test length(r.runs) == 2
+    @test r.runs[1] == Run(1, 1:2)
+    @test r.runs[2] == Run(1, 5:7)
+
+    # Multiple columns with different run extents
+    img = zeros(Float64, 5, 3)
+    img[2:4, 1] .= 1.0   # col 1: rows 2..4
+    img[1:5, 3] .= 1.0   # col 3: all rows
+    r = binarize(img, x -> x > 0.5)
+    @test length(r.runs) == 2
+    @test r.runs[1] == Run(1, 2:4)
+    @test r.runs[2] == Run(3, 1:5)
+
+    # Result is never a complement
+    @test binarize(ones(Float64, 2, 2), x -> x > 0.5).complement == false
+
+    # Custom predicate: threshold at <= 0.5
+    img = ones(Float64, 4, 1) .* 0.3
+    r = binarize(img, x -> x <= 0.5)
+    @test length(r.runs) == 1
+    @test r.runs[1] == Run(1, 1:4)
+
+end # "binarize"
+
+@testset "components" begin
+
+    # Empty region → no components
+    @test length(components(Region(Run[]))) == 0
+
+    # Single run → one component
+    cs = components(Region([Run(1, 1:3)]))
+    @test length(cs) == 1
+    @test cs[1].runs == [Run(1, 1:3)]
+
+    # Two column-adjacent runs with overlapping rows → one component
+    cs = components(Region([Run(1, 1:5), Run(2, 1:5)]))
+    @test length(cs) == 1
+
+    # Two column-adjacent runs with partially overlapping rows → one component
+    cs = components(Region([Run(1, 1:5), Run(2, 3:8)]))
+    @test length(cs) == 1
+
+    # Two runs far apart in columns → two components
+    cs = components(Region([Run(1, 1:3), Run(10, 1:3)]))
+    @test length(cs) == 2
+
+    # Two runs in same column, far apart in rows → two components
+    cs = components(Region([Run(1, 1:2), Run(1, 8:9)]))
+    @test length(cs) == 2
+
+    # Three disconnected runs → three components
+    cs = components(Region([Run(1, 1:2), Run(1, 8:9), Run(10, 1:2)]))
+    @test length(cs) == 3
+
+    # Each component contains the correct runs
+    r = Region([Run(1, 1:2), Run(3, 6:8)])
+    cs = components(r)
+    @test length(cs) == 2
+    @test any(c -> c.runs == [Run(1, 1:2)], cs)
+    @test any(c -> c.runs == [Run(3, 6:8)], cs)
+
+    # dx parameter: runs connect within dx=2 columns → one component
+    cs = components(Region([Run(1, 1:3), Run(3, 1:3)]), unsigned(2), unsigned(1))
+    @test length(cs) == 1
+
+    # dy parameter: runs connect within dy=2 rows → one component
+    cs = components(Region([Run(1, 1:3), Run(1, 5:7)]), unsigned(1), unsigned(2))
+    @test length(cs) == 1
+
+    # Components are non-complement regions
+    cs = components(Region([Run(1, 1:3)]))
+    @test cs[1].complement == false
+
+end # "components"
