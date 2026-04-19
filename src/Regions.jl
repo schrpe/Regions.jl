@@ -53,20 +53,20 @@ function binarize(image, predicate)
         inside_object = false
         start_column = 0
         for column in 1:columns
-            if predicate(image[row, column]) 
-                if false == inside_object
+            if predicate(image[row, column])
+                if !inside_object
                     inside_object = true
                     start_column = column
                 end
             else
-                if true == inside_object
+                if inside_object
                     inside_object = false
                     push!(region.runs, Run(row, start_column:(column-1)))
                 end
             end
         end
         # if still inside at the end of a line...
-        if true == inside_object
+        if inside_object
             push!(region.runs, Run(row, start_column:columns))
         end
     end
