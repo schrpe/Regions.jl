@@ -442,20 +442,20 @@ function difference(a::Vector{Run}, b::Vector{Run})
     # first_b and last_b form a range of chords in b that are in the same row
     first_b = findfirst(x -> x.row >= a[1].row, b)
     last_b = first_b
-    if first_b != nothing
+    if !isnothing(first_b)
         last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:length(b)))
     end
 
     for a_index in 1:length(a)
-        if first_b != nothing && a[a_index].row > b[first_b].row
+        if !isnothing(first_b) && a[a_index].row > b[first_b].row
             # update the range
             first_b = findfirst(x -> x.row >= a[a_index].row, b)
             last_b = first_b
-            if first_b != nothing
+            if !isnothing(first_b)
                 last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:length(b)))
             end
         end
-        if first_b == nothing || a[a_index].row != b[first_b].row
+        if isnothing(first_b) || a[a_index].row != b[first_b].row
             push!(res, a[a_index])
         else
             for i in first_b:last_b
