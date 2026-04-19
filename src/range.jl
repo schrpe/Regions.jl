@@ -41,7 +41,7 @@ translate(x::UnitRange{Int64}, y::Integer) = x + y
 """
     invert(x::UnitRange{Int64})
 
-Inverts a range. Inversion mirrors a range at the origin. A range is 
+Invert a range. Inversion mirrors a range at the origin. A range is 
 inverted by reversing and inverting each of its coordinates.
 
 ```jldoctest

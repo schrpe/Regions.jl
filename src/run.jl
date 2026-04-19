@@ -66,6 +66,7 @@ isless(x::Run, y::Run) = (x.row < y.row) || ((x.row == y.row) && (x.columns < y.
 
 """
     invert(x::Run)
+    -(x::Run) = invert(x)
 
 Invert a run. Inversions mirrors a run at the origin. A run is inverted by negating 
 its row and inverting its columns.
