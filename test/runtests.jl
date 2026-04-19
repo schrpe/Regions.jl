@@ -11,5 +11,6 @@ using Test
     include("test_binarize.jl")
     include("test_region_vector.jl")
     include("test_complement.jl")
+    include("test_region_from_box.jl")
 
 end

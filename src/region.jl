@@ -8,7 +8,7 @@ import Base: copy, -, union, ==, show
 export Region
 export isempty, ==, copy, invert, -, translate, translate!, contains, ∈
 export left, top, right, bottom, bounds
-export complement, complement!
+export complement
 export union, intersection, difference
 export region_from_box
 export region_to_image
@@ -170,11 +170,7 @@ This function works for non-complement and non-empty regions only.
 function left(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(r.runs) "cannot calculate for empty regions"
-    v = r.runs[1].columns.start
-    for i in r.runs
-        v = min(v, i.columns.start)
-    end
-    return v
+    minimum(run.columns.start for run in r.runs)
 end
 
 """
@@ -187,11 +183,7 @@ This function works for non-complement and non-empty regions only.
 function top(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(r.runs) "cannot calculate for empty regions"
-    v = r.runs[1].row
-    for i in r.runs
-        v = max(v, i.row)
-    end
-    return v
+    maximum(run.row for run in r.runs)
 end
 
 """
@@ -204,11 +196,7 @@ This function works for non-complement and non-empty regions only.
 function right(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(r.runs) "cannot calculate for empty regions"
-    v = r.runs[1].columns.stop
-    for i in r.runs
-        v = max(v, i.columns.stop)
-    end
-    return v
+    maximum(run.columns.stop for run in r.runs)
 end
 
 """
@@ -221,11 +209,7 @@ This function works for non-complement and non-empty regions only.
 function bottom(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(r.runs) "cannot calculate for empty regions"
-    v = r.runs[1].row
-    for i in r.runs
-        v = min(v, i.row)
-    end
-    return v
+    minimum(run.row for run in r.runs)
 end
 
 """
@@ -239,17 +223,10 @@ This function works for non-complement and non-empty regions only.
 function bounds(region::Region)
     @assert !region.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(region.runs) "cannot calculate for empty regions"
-    l = region.runs[1].columns.start
-    t = region.runs[1].row
-    r = region.runs[1].columns.stop
-    b = region.runs[1].row
-    for run in region.runs
-        l = min(l, run.columns.start)
-        t = max(t, run.row)
-        r = max(r, run.columns.stop)
-        b = min(b, run.row)
-    end
-    return l, t, r, b
+    return (minimum(run.columns.start for run in region.runs),
+            maximum(run.row           for run in region.runs),
+            maximum(run.columns.stop  for run in region.runs),
+            minimum(run.row           for run in region.runs))
 end
 
 """
@@ -262,7 +239,6 @@ what is included within the region. With a complemented region, the runs specify
 non-contained pixels, i.e. they specify what is not included within the region.
 """
 complement(x::Region) = Region(copy(x.runs), !x.complement)
-complement!(x::Region) = x.complement =! x.complement
 
 """
     merge(a::Vector{Run}, b::Vector{Run})

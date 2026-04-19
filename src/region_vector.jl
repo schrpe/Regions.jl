@@ -144,10 +144,7 @@ function regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
                 img[run.row-b+1, column-l+1] = eltype(colors)(cc, ac)
             end
         end
-        n += 1
-        if (n > length(colors))
-            n = 1
-        end
+        n = mod1(n + 1, length(colors))
     end
     return img
 end

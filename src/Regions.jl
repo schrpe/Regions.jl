@@ -30,7 +30,7 @@ include("region_vector.jl")
 
 Binarize an image and return a region.
 
-The predicate must be a funtion that takes a pixel value and returns a boolean result based
+The predicate must be a function that takes a pixel value and returns a boolean result based
 on the pixel value.
 
 Here are some useful examples:
