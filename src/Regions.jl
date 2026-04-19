@@ -17,6 +17,7 @@ module Regions
 
 using Images
 
+export Run, Region
 export binarize, components
 
 include("range.jl")
@@ -158,7 +159,7 @@ function components(region::Region, dx::Unsigned=unsigned(1), dy::Unsigned=unsig
     ## Also counts the # of roots (i.e. number of connected components).
     r_idx = -1
 
-    for idx = 1:length(union_find)
+    for idx in eachindex(union_find)
         if union_find[idx] <= -1
             union_find[idx] = r_idx
             r_idx -= 1

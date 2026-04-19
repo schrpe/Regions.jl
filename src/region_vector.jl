@@ -16,7 +16,7 @@ This function works for non-complement and non-empty regions only. The vector
 must not be empty.
 """
 function left(regions::Vector{Region})
-    if length(regions) > 0
+    if !isempty(regions)
         l = left(regions[1])
         for region in regions
             l = min(l, left(region))
@@ -36,7 +36,7 @@ This function works for non-complement and non-empty regions only. The vector
 must not be empty.
 """
 function top(regions::Vector{Region})
-    if length(regions) > 0
+    if !isempty(regions)
         t = top(regions[1])
         for region in regions
             t = max(t, top(region))
@@ -56,7 +56,7 @@ This function works for non-complement and non-empty regions only. The vector
 must not be empty.
 """
 function right(regions::Vector{Region})
-    if length(regions) > 0
+    if !isempty(regions)
         r = right(regions[1])
         for region in regions
             r = max(r, right(region))
@@ -76,7 +76,7 @@ This function works for non-complement and non-empty regions only. The vector
 must not be empty.
 """
 function bottom(regions::Vector{Region})
-    if length(regions) > 0
+    if !isempty(regions)
         b = bottom(regions[1])
         for region in regions
             b = min(b, bottom(region))
@@ -97,7 +97,7 @@ This function works for non-complement and non-empty regions only. The vector
 must not be empty.
 """
 function bounds(regions::Vector{Region})
-    if length(regions) > 0
+    if !isempty(regions)
         l = left(regions[1])
         t = top(regions[1])
         r = right(regions[1])

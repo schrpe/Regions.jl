@@ -12,9 +12,9 @@ Regions.jl defines a set of types and functions that model a discrete 2-dimensio
 
 In order to use the types and functions defined in the Regions package, you must first install it with the package manager and then make it known to your module:
 
-```
+```julia
 julia> using Pkg
-julia> using Pkg.add(path="D:/!julia/Regions")
+julia> Pkg.add("Regions")
 ```
 ```jldoctest reg
 julia> using Regions

@@ -169,7 +169,7 @@ This function works for non-complement and non-empty regions only.
 """
 function left(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert length(r.runs)>0 "cannot calculate for empty regions"
+    @assert !isempty(r.runs) "cannot calculate for empty regions"
     v = r.runs[1].columns.start
     for i in r.runs
         v = min(v, i.columns.start)
@@ -186,7 +186,7 @@ This function works for non-complement and non-empty regions only.
 """
 function top(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert length(r.runs)>0 "cannot calculate for empty regions"
+    @assert !isempty(r.runs) "cannot calculate for empty regions"
     v = r.runs[1].row
     for i in r.runs
         v = max(v, i.row)
@@ -203,7 +203,7 @@ This function works for non-complement and non-empty regions only.
 """
 function right(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert length(r.runs)>0 "cannot calculate for empty regions"
+    @assert !isempty(r.runs) "cannot calculate for empty regions"
     v = r.runs[1].columns.stop
     for i in r.runs
         v = max(v, i.columns.stop)
@@ -220,7 +220,7 @@ This function works for non-complement and non-empty regions only.
 """
 function bottom(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
-    @assert length(r.runs)>0 "cannot calculate for empty regions"
+    @assert !isempty(r.runs) "cannot calculate for empty regions"
     v = r.runs[1].row
     for i in r.runs
         v = min(v, i.row)
@@ -238,7 +238,7 @@ This function works for non-complement and non-empty regions only.
 """
 function bounds(region::Region)
     @assert !region.complement "cannot calculate for infinite (complement) regions"
-    @assert length(region.runs)>0 "cannot calculate for empty regions"
+    @assert !isempty(region.runs) "cannot calculate for empty regions"
     l = region.runs[1].columns.start
     t = region.runs[1].row
     r = region.runs[1].columns.stop
@@ -429,11 +429,11 @@ Calculates the difference of two sorted vectors of runs. The function assumes th
 but does not check this.
 """
 function difference(a::Vector{Run}, b::Vector{Run})
-    if length(a) == 0
+    if isempty(a)
         return Run[]
     end
 
-    if length(b) == 0
+    if isempty(b)
         return a
     end
 
