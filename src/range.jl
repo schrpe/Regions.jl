@@ -1,6 +1,6 @@
 #= ------------------------------------------------------------------------
 
-    UnitRange{Int64}
+    UnitRange{Int}
 
 ------------------------------------------------------------------------ =#
 
@@ -9,7 +9,7 @@ export translate, -, +
 export invert, contains, isoverlapping, istouching, isclose
 
 """
-    translate(x::UnitRange{Int64}, y::Integer)
+    translate(x::UnitRange{Int}, y::Integer)
 
 Translate a range. Translation moves a range. A range is translated by adding 
 an offset to each of its coordinates.
@@ -33,13 +33,13 @@ julia> (5:15) - 10
 -5:5
 ```
 """
-translate(x::UnitRange{Int64}, y::Integer) = x + y
-+(x::UnitRange{Int64}, y::Integer) = x.start + y : x.stop + y
-+(x::Integer, y::UnitRange{Int64}) = x + y.start : x + y.stop
--(x::UnitRange{Int64}, y::Integer) = x.start - y : x.stop - y
+translate(x::UnitRange{Int}, y::Integer) = x + y
++(x::UnitRange{Int}, y::Integer) = x.start + y : x.stop + y
++(x::Integer, y::UnitRange{Int}) = x + y.start : x + y.stop
+-(x::UnitRange{Int}, y::Integer) = x.start - y : x.stop - y
 
 """
-    invert(x::UnitRange{Int64})
+    invert(x::UnitRange{Int})
 
 Invert a range. Inversion mirrors a range at the origin. A range is 
 inverted by reversing and inverting each of its coordinates.
@@ -54,10 +54,10 @@ julia> invert(invert(0:100))
 0:100
 ```
 """
-invert(x::UnitRange{Int64}) = UnitRange(-x.stop : -x.start)
+invert(x::UnitRange{Int}) = UnitRange(-x.stop : -x.start)
 
 """
-    contains(x::UnitRange{Int64}, y::Integer)
+    contains(x::UnitRange{Int}, y::Integer)
 
 Test if range x contains value y.
 
@@ -79,10 +79,10 @@ julia> 100 ∈ 0:10
 false
 ```
 """
-contains(x::UnitRange{Int64}, y::Integer) = y ∈ x
+contains(x::UnitRange{Int}, y::Integer) = y ∈ x
 
 """
-    isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64})
+    isoverlapping(x::UnitRange{Int}, y::UnitRange{Int})
 
 Test if two ranges overlap.
 
@@ -96,10 +96,10 @@ julia> isoverlapping(0:10, 20:30)
 false
 ```
 """
-isoverlapping(x::UnitRange{Int64}, y::UnitRange{Int64}) = (x < y) ? (x.stop ≥ y.start) : (y.stop ≥ x.start)
+isoverlapping(x::UnitRange{Int}, y::UnitRange{Int}) = (x < y) ? (x.stop ≥ y.start) : (y.stop ≥ x.start)
 
 """
-    istouching(x::UnitRange{Int64}, y::UnitRange{Int64})
+    istouching(x::UnitRange{Int}, y::UnitRange{Int})
 
 Test if two ranges touch.
 
@@ -113,10 +113,10 @@ julia> istouching(0:10, 12:22)
 false
 ```
 """
-istouching(x::UnitRange{Int64}, y::UnitRange{Int64}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
+istouching(x::UnitRange{Int}, y::UnitRange{Int}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
 
 """
-    isclose(::UnitRange{Int64}x, ::UnitRange{Int64}y, distance::Integer)
+    isclose(::UnitRange{Int}x, ::UnitRange{Int}y, distance::Integer)
 
 Test if two ranges are close.
 
@@ -134,4 +134,4 @@ julia> isclose(0:10, 15:25, 4)
 false
 ```
 """
-isclose(x::UnitRange{Int64}, y::UnitRange{Int64}, distance::Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)
+isclose(x::UnitRange{Int}, y::UnitRange{Int}, distance::Integer) = (x < y) ? (x.stop+distance ≥ y.start) : (y.stop+distance ≥ x.start)

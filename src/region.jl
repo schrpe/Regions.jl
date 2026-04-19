@@ -121,7 +121,7 @@ end
 
 """
     translate(r::Region, x::Integer, y::Integer)
-    translate(r::Region, a::Vector{Int64})
+    translate(r::Region, a::Vector{Int})
 
 Translate a region. Translation moves a region. A region is translated by translating each 
 of its runs. 
@@ -138,21 +138,21 @@ Region(Run[Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)], false)
 function translate(r::Region, x::Integer, y::Integer)
     return translate!(copy(r), x, y)
 end
-translate(r::Region, d::Vector{Int64}) = translate(r, d[1], d[2])
-+(x::Region, y::Vector{Int64}) = translate(x, y[1], y[2])
-+(x::Vector{Int64}, y::Region) = translate(y, x[1], x[2])
--(x::Region, y::Vector{Int64}) = translate(x, -y[1], -y[2])
+translate(r::Region, d::Vector{Int}) = translate(r, d[1], d[2])
++(x::Region, y::Vector{Int}) = translate(x, y[1], y[2])
++(x::Vector{Int}, y::Region) = translate(y, x[1], x[2])
+-(x::Region, y::Vector{Int}) = translate(x, -y[1], -y[2])
 function translate!(r::Region, x::Integer, y::Integer)
     for i in 1:length(r.runs)
         r.runs[i] = translate(r.runs[i], x, y)
     end
     return r
 end
-translate!(r::Region, d::Vector{Int64}) = translate!(r, d[1], d[2])
+translate!(r::Region, d::Vector{Int}) = translate!(r, d[1], d[2])
 
 """
     contains(r::Region, x::Integer, y::Integer)
-    contains(r::Region, a::Array{Int64, 1})
+    contains(r::Region, a::Vector{Int})
 
 Test if region r contains position (x, y). x is the column coordinate, y is the row coordinate.
 
@@ -175,8 +175,8 @@ true
 ```
 """
 contains(r::Region, x::Integer, y::Integer) = r.complement ? !any(run -> contains(run, x, y), r.runs) : any(run -> contains(run, x, y), r.runs)
-contains(r::Region, a::Array{Int64, 1}) = contains(r, a[1], a[2])
-∈(a::Array{Int64, 1}, r::Region) = contains(r, a)
+contains(r::Region, a::Vector{Int}) = contains(r, a[1], a[2])
+∈(a::Vector{Int}, r::Region) = contains(r, a)
 
 """
     left(x::Region)

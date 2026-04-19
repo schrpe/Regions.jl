@@ -15,7 +15,7 @@ export contains, isoverlapping, istouching, isclose
 
 A run is a set of consecutive coordinates within a column (possibly partial) of a
 region. It consists of a discrete column coordinate (of type Int) and a range
-of discrete row coordinates (of type UnitRange{Int64}).
+of discrete row coordinates (of type UnitRange{Int}).
 
 Runs within a region specify a sort order: one run is smaller than the other if it starts
 before the other run modeling the coordinates from left to right and top to
@@ -23,7 +23,7 @@ bottom.
 """
 struct Run
     column::Int
-    rows::UnitRange{Int64}
+    rows::UnitRange{Int}
 end
 
 """
@@ -88,7 +88,7 @@ invert(x::Run) = -x
 
 """
     translate(r::Run, x::Integer, y::Integer)
-    translate(r::Run, a::Vector{Int64})
+    translate(r::Run, a::Vector{Int})
 
 Translate a run. Translation moves a run. A run is translated by adding offsets to its
 column and rows.
@@ -116,14 +116,14 @@ Run(-5, -25:75)
 ```
 """
 translate(a::Run, x::Integer, y::Integer) = a + [x, y]
-translate(a::Run, b::Vector{Int64}) = a + b
-+(a::Run, b::Vector{Int64}) = Run(a.column + b[1], a.rows + b[2])
-+(a::Vector{Int64}, b::Run) = Run(a[1] + b.column, a[2] + b.rows)
--(a::Run, b::Vector{Int64}) = Run(a.column - b[1], a.rows - b[2])
+translate(a::Run, b::Vector{Int}) = a + b
++(a::Run, b::Vector{Int}) = Run(a.column + b[1], a.rows + b[2])
++(a::Vector{Int}, b::Run) = Run(a[1] + b.column, a[2] + b.rows)
+-(a::Run, b::Vector{Int}) = Run(a.column - b[1], a.rows - b[2])
 
 """
     contains(r::Run, x::Integer, y::Integer)
-    contains(r::Run, a::Vector{Int64})
+    contains(r::Run, a::Vector{Int})
 
 Test if run r contains position (x, y).
 
@@ -141,8 +141,8 @@ false
 ```
 """
 contains(r::Run, x::Integer, y::Integer) = (r.column == x) && contains(r.rows, y)
-contains(r::Run, a::Vector{Int64}) = contains(r, a[1], a[2])
-∈(a::Vector{Int64}, r::Run) = contains(r, a)
+contains(r::Run, a::Vector{Int}) = contains(r, a[1], a[2])
+∈(a::Vector{Int}, r::Run) = contains(r, a)
 
 """
     isoverlapping(x::Run, y::Run)
@@ -184,7 +184,7 @@ istouching(x::Run, y::Run) = abs(x.column - y.column) ≤ 1 && istouching(x.rows
 """
     isclose(a::Run, b::Run, x::Integer, y::Integer)
     isclose(a::Run, b::Run, d::Integer)
-    isclose(x::Run, y::Run, distance::Vector{Int64})
+    isclose(x::Run, y::Run, distance::Vector{Int})
 
 Test if two runs are close.
 
@@ -204,4 +204,4 @@ false
 """
 isclose(a::Run, b::Run, x::Integer, y::Integer) = abs(a.column - b.column) <= x && isclose(a.rows, b.rows, y)
 isclose(a::Run, b::Run, d::Integer) = isclose(a, b, d, d)
-isclose(a::Run, b::Run, distance::Vector{Int64}) = isclose(a, b, distance[1], distance[2])
+isclose(a::Run, b::Run, distance::Vector{Int}) = isclose(a, b, distance[1], distance[2])
