@@ -448,8 +448,8 @@ function difference(a::Vector{Run}, b::Vector{Run})
 
     for a_index in 1:length(a)
         if !isnothing(first_b) && a[a_index].row > b[first_b].row
-            # update the range
-            first_b = findfirst(x -> x.row >= a[a_index].row, b)
+            # update the range — start search from current first_b since both arrays are sorted
+            first_b = findfirst(x -> x.row >= a[a_index].row, view(b, first_b:length(b)))
             last_b = first_b
             if !isnothing(first_b)
                 last_b = findlast(x -> x.row == b[first_b].row, view(b, first_b:length(b)))

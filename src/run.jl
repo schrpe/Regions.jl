@@ -22,7 +22,7 @@ before the other run modeling the coordinates from left to right and top to
 bottom.
 """
 struct Run
-    row::Integer
+    row::Int64
     columns::UnitRange{Int64}
 end
 
