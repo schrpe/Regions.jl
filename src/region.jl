@@ -6,7 +6,7 @@
 
 import Base: copy, -, union, ==, show
 export Region
-export isempty, ==, copy, invert, -, translate, translate!, contains, ∈
+export isempty, ==, copy, invert, -, translate, translate!, center, contains, ∈
 export left, top, right, bottom, bounds
 export complement
 export union, intersection, difference
@@ -155,6 +155,47 @@ function translate!(r::Region, x::Integer, y::Integer)
     return r
 end
 translate!(r::Region, d::Vector{Int}) = translate!(r, d[1], d[2])
+
+"""
+    center(r::Region) -> Region
+
+Translate a non-empty, non-complement region so that its bounding-box centre
+lands as close to the origin as possible.
+
+The translation amounts are computed from the integer midpoints of the column
+and row extents:
+
+    Δcol = (left(r) + right(r))  ÷ 2
+    Δrow = (bottom(r) + top(r))  ÷ 2
+
+Because pixel coordinates are integers, even-width or even-height regions
+cannot be placed symmetrically; the standard integer (floor) division places
+the origin one pixel left of / below the geometric centre in those cases.
+
+```jldoctest
+julia> using Regions
+
+julia> r = Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]);
+
+julia> c = center(r);
+
+julia> left(c), right(c), bottom(c), top(c)
+(-1, 1, -1, 1)
+
+julia> r2 = Region([Run(10, 5:6), Run(11, 5:6)]);
+
+julia> c2 = center(r2);
+
+julia> left(c2), right(c2)
+(-1, 0)
+```
+"""
+function center(r::Region)
+    @assert !r.complement && !isempty(r.runs) "center requires a non-empty, non-complement region"
+    Δcol = (left(r)   + right(r)) ÷ 2
+    Δrow = (bottom(r) + top(r))   ÷ 2
+    return translate(r, -Δcol, -Δrow)
+end
 
 """
     contains(r::Region, x::Integer, y::Integer)

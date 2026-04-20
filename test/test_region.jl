@@ -51,6 +51,22 @@ using Images: Gray, RGBA
     @test Region([Run(1, 1:2), Run(2, 3:4)]) - [5, 6] == Region([Run(-4, -5:-4), Run(-3, -3:-2)])
     @test Region([Run(1, 1:2), Run(2, 3:4)]) + [5, 6] == Region([Run(6, 7:8), Run(7, 9:10)])
 
+    # center: moves bounding-box midpoint to origin via integer division
+    let c = center(Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]))
+        @test left(c) == -1 && right(c) == 1
+        @test bottom(c) == -1 && top(c) == 1
+    end
+    # even column span: columns 10–11 → midpoint = (10+11)÷2 = 10, shift −10 → 0:1
+    let c = center(Region([Run(10, 5:6), Run(11, 5:6)]))
+        @test left(c) == 0 && right(c) == 1
+    end
+    # single pixel is already trivially centerable
+    @test center(Region([Run(7, 3:3)])) == Region([Run(0, 0:0)])
+    # shape is preserved: same area
+    let r = Region([Run(c, 1:3) for c in 1:5])
+        @test area(center(r)) == area(r)
+    end
+
     # contains: Run(column, rows) — contains(r, x, y) checks column==x and y∈rows
     @test !contains(Region([Run(0, 0:-1)]), 0, -1)
     @test !contains(Region([Run(0, 0:-1)]), 0, 0)
