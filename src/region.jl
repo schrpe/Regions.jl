@@ -14,6 +14,10 @@ export region_from_box
 export region_from_circle
 export region_from_polygon
 export region_to_image
+export minkowski_addition, minkowski_subtraction
+export erosion, dilation, opening, closing
+export morphological_gradient, inner_boundary, outer_boundary
+export holes, fill_holes
 
 """
     Region
@@ -459,16 +463,20 @@ function difference(a::Vector{Run}, b::Vector{Run})
     first_b = findfirst(x -> x.column >= a[1].column, b)
     last_b = first_b
     if !isnothing(first_b)
-        last_b = findlast(x -> x.column == b[first_b].column, view(b, first_b:length(b)))
+        idx = findlast(x -> x.column == b[first_b].column, view(b, first_b:length(b)))
+        last_b = isnothing(idx) ? first_b : first_b + idx - 1
     end
 
     for a_index in 1:length(a)
         if !isnothing(first_b) && a[a_index].column > b[first_b].column
             # update the range — start search from current first_b since both arrays are sorted
-            first_b = findfirst(x -> x.column >= a[a_index].column, view(b, first_b:length(b)))
+            old_first_b = first_b
+            idx = findfirst(x -> x.column >= a[a_index].column, view(b, old_first_b:length(b)))
+            first_b = isnothing(idx) ? nothing : old_first_b + idx - 1
             last_b = first_b
             if !isnothing(first_b)
-                last_b = findlast(x -> x.column == b[first_b].column, view(b, first_b:length(b)))
+                idx2 = findlast(x -> x.column == b[first_b].column, view(b, first_b:length(b)))
+                last_b = isnothing(idx2) ? first_b : first_b + idx2 - 1
             end
         end
         if isnothing(first_b) || a[a_index].column != b[first_b].column
@@ -670,5 +678,417 @@ function Base.show(io::IO, mime::MIME"image/png", region::Region)
     if !isempty(region)
         Base.show(io, mime, region_to_image(region, RGBA(0,0,1,0.5)))
     end
+end
+
+#= ------------------------------------------------------------------------
+
+    Morphological operations
+
+    Coordinate convention (column-major, matching Julia arrays):
+      Run(column, rows) — vertical segment at a given column.
+      Regions are sorted by (column, rows.start).
+
+    This mirrors the C++ ngi::region_core which uses horizontal chords
+    (row, col_range) sorted row-major. Every formula is structurally
+    identical — axes are just swapped.
+
+    Low-level helpers (_minkowski_addition, _minkowski_subtraction,
+    _dilation, _erosion) ignore the complement flag and are used as
+    building blocks by the public API which handles complement regions
+    via DeMorgan's rules.
+
+------------------------------------------------------------------------ =#
+
+# Low-level (no complement handling) ----------------------------------------
+
+function _minkowski_addition(a::Region, b::Region)
+    isempty(a.runs) && return a
+    isempty(b.runs) && return a
+    # Commutativity: loop over the region with fewer runs as the "SE"
+    if length(b.runs) > length(a.runs)
+        return _minkowski_addition(b, a)
+    end
+    result = Region(Run[])
+    for se_run in b.runs
+        translated = [minkowski_addition(r, se_run) for r in a.runs]
+        pack!(translated)
+        result = Region(union(result.runs, translated))
+    end
+    return result
+end
+
+function _minkowski_subtraction(a::Region, b::Region)
+    isempty(a.runs) && return a
+    isempty(b.runs) && return a
+    result = a
+    for se_run in b.runs
+        translated = Run[]
+        for r in a.runs   # always iterate original a, not result
+            s = minkowski_subtraction(r, se_run)
+            !isempty(s) && push!(translated, s)
+        end
+        pack!(translated)
+        isempty(translated) && return Region(Run[])
+        result = Region(intersection(result.runs, translated))
+    end
+    return result
+end
+
+_dilation(a::Region, b::Region) = _minkowski_addition(a, invert(b))
+_erosion(a::Region,  b::Region) = _minkowski_subtraction(a, invert(b))
+
+# Public API with DeMorgan complement handling --------------------------------
+
+"""
+    minkowski_addition(a::Region, b::Region)
+
+Compute the Minkowski sum of two regions.
+
+For every point `p` in `a` and `q` in `b`, the result contains `p + q`.
+This expands `a` by the shape of `b` (or vice versa — the operation is
+commutative).
+
+Complement regions are handled via DeMorgan's rules. Both arguments being
+complements simultaneously is not supported and throws an error.
+
+```jldoctest
+julia> using Regions
+
+julia> origin = Region([Run(0, 0:0)]);
+
+julia> hbar = Region([Run(-1, 0:0), Run(0, 0:0), Run(1, 0:0)]);
+
+julia> minkowski_addition(origin, hbar)
+Region(Run[Run(-1, 0:0), Run(0, 0:0), Run(1, 0:0)], false)
+
+julia> minkowski_addition(hbar, origin) == minkowski_addition(origin, hbar)
+true
+```
+"""
+function minkowski_addition(a::Region, b::Region)
+    if a.complement && b.complement
+        error("minkowski_addition: not supported when both regions are complements")
+    elseif a.complement
+        Region(_minkowski_subtraction(Region(a.runs), b).runs, true)
+    elseif b.complement
+        Region(_minkowski_subtraction(Region(b.runs), a).runs, true)
+    else
+        _minkowski_addition(a, b)
+    end
+end
+
+"""
+    minkowski_subtraction(a::Region, b::Region)
+
+Compute the Minkowski difference (erosion by a structuring element) of two regions.
+
+The result contains every point `c` such that `c + b ⊆ a`.  This shrinks `a`
+by the shape of `b`.
+
+Complement regions are handled via DeMorgan's rules. The structuring element
+being a complement region is not supported and throws an error.
+
+```jldoctest
+julia> using Regions
+
+julia> big = region_from_box(-2, 2, 2, -2);
+
+julia> se  = region_from_box(-1, 1, 1, -1);
+
+julia> minkowski_subtraction(big, se) == se
+true
+```
+"""
+function minkowski_subtraction(a::Region, b::Region)
+    if a.complement && b.complement
+        _minkowski_subtraction(Region(b.runs), Region(a.runs))
+    elseif a.complement
+        Region(_minkowski_addition(Region(a.runs), b).runs, true)
+    elseif b.complement
+        error("minkowski_subtraction: structuring element must not be a complement region")
+    else
+        _minkowski_subtraction(a, b)
+    end
+end
+
+"""
+    erosion(a::Region, b::Region)
+
+Erode region `a` with structuring element `b`.
+
+Erosion shrinks `a`: the result contains every point `c` such that
+the reflected (inverted) `b` centred at `c` fits entirely within `a`.
+Erosion may split a connected region into disconnected parts.
+
+Structuring elements should be centred on the origin.
+Complement regions are handled via DeMorgan's rules.
+
+```jldoctest
+julia> using Regions
+
+julia> big = region_from_box(-2, 2, 2, -2);
+
+julia> se  = region_from_box(-1, 1, 1, -1);
+
+julia> erosion(big, se) == se
+true
+
+julia> isempty(erosion(Region([Run(0, 0:0)]), se))
+true
+```
+"""
+function erosion(a::Region, b::Region)
+    if a.complement && b.complement
+        _minkowski_subtraction(invert(Region(b.runs)), Region(a.runs))
+    elseif a.complement
+        Region(_dilation(Region(a.runs), b).runs, true)
+    elseif b.complement
+        error("erosion: structuring element must not be a complement region")
+    else
+        _erosion(a, b)
+    end
+end
+
+"""
+    dilation(a::Region, b::Region)
+
+Dilate region `a` with structuring element `b`.
+
+Dilation grows `a`: the result contains every point reachable by placing
+`b` centred at any pixel of `a`. Dilation may merge disconnected parts.
+
+Structuring elements should be centred on the origin.
+Complement regions are handled via DeMorgan's rules.
+
+```jldoctest
+julia> using Regions
+
+julia> small = region_from_box(-1, 1, 1, -1);
+
+julia> se    = region_from_box(-1, 1, 1, -1);
+
+julia> dilation(small, se) == region_from_box(-2, 2, 2, -2)
+true
+```
+"""
+function dilation(a::Region, b::Region)
+    if a.complement && b.complement
+        error("dilation: not supported when both regions are complements")
+    elseif a.complement
+        Region(_erosion(Region(a.runs), b).runs, true)
+    elseif b.complement
+        Region(_minkowski_subtraction(invert(Region(b.runs)), a).runs, true)
+    else
+        _dilation(a, b)
+    end
+end
+
+"""
+    opening(a::Region, b::Region)
+
+Morphological opening: erosion of `a` by `b`, followed by Minkowski addition
+with `b`.
+
+Opening removes structures smaller than the structuring element and smoothes
+the region boundary. The result is always a subset of `a`.
+
+Structuring elements should be centred on the origin.
+
+```jldoctest
+julia> using Regions
+
+julia> big = region_from_box(-2, 2, 2, -2);
+
+julia> se  = region_from_box(-1, 1, 1, -1);
+
+julia> opening(big, se) == big
+true
+
+julia> isempty(opening(Region([Run(0, 0:0)]), se))
+true
+```
+"""
+opening(a::Region, b::Region) = minkowski_addition(erosion(a, b), b)
+
+"""
+    closing(a::Region, b::Region)
+
+Morphological closing: dilation of `a` by `b`, followed by Minkowski
+subtraction with `b`.
+
+Closing fills gaps and holes smaller than the structuring element and
+smoothes the region boundary. The result always contains `a` as a subset.
+
+Structuring elements should be centred on the origin.
+
+```jldoctest
+julia> using Regions
+
+julia> gapped = Region([Run(-1, 0:0), Run(1, 0:0)]);
+
+julia> se = region_from_box(-1, 1, 1, -1);
+
+julia> c = closing(gapped, se);
+
+julia> contains(c, 0, 0)
+true
+
+julia> contains(c, -1, 0) && contains(c, 1, 0)
+true
+```
+"""
+closing(a::Region, b::Region) = minkowski_subtraction(dilation(a, b), b)
+
+"""
+    morphological_gradient(a::Region, b::Region)
+
+Morphological gradient: difference of the dilation and erosion of `a` by `b`.
+
+The result is a ring around the boundary of `a`, lying partly inside and
+partly outside.
+
+Structuring elements should be centred on the origin.
+
+```jldoctest
+julia> using Regions
+
+julia> box = region_from_box(-2, 2, 2, -2);
+
+julia> se  = region_from_box(-1, 1, 1, -1);
+
+julia> grad = morphological_gradient(box, se);
+
+julia> contains(grad, -2, 0)
+true
+
+julia> contains(grad, 0, 0)
+false
+```
+"""
+morphological_gradient(a::Region, b::Region) = difference(dilation(a, b), erosion(a, b))
+
+"""
+    inner_boundary(a::Region)
+
+Compute the inner boundary of a region.
+
+The inner boundary is the set of pixels that belong to `a` but would be
+removed by a 3×3 erosion — i.e. the outermost layer of pixels strictly
+inside `a`.
+
+```jldoctest
+julia> using Regions
+
+julia> box = region_from_box(-2, 2, 2, -2);
+
+julia> ib = inner_boundary(box);
+
+julia> contains(ib, -2, 0)
+true
+
+julia> contains(ib, 0, 0)
+false
+```
+"""
+function inner_boundary(a::Region)
+    se = region_from_box(-1, 1, 1, -1)
+    difference(copy(a), erosion(a, se))
+end
+
+"""
+    outer_boundary(a::Region)
+
+Compute the outer boundary of a region.
+
+The outer boundary is the set of pixels that do not belong to `a` but are
+added by a 3×3 dilation — i.e. the innermost layer of pixels strictly
+outside `a`.
+
+```jldoctest
+julia> using Regions
+
+julia> box = region_from_box(-2, 2, 2, -2);
+
+julia> ob = outer_boundary(box);
+
+julia> contains(ob, -3, 0)
+true
+
+julia> contains(ob, -2, 0)
+false
+```
+"""
+function outer_boundary(a::Region)
+    se = region_from_box(-1, 1, 1, -1)
+    difference(dilation(a, se), a)
+end
+
+"""
+    holes(region::Region)
+
+Extract the holes of a region.
+
+A hole is a connected component of the complement-within-bounding-box that
+does not touch the bounding box boundary. Returns a `Vector{Region}`, one
+element per hole.
+
+Only non-complement regions are supported.
+
+```jldoctest
+julia> using Regions
+
+julia> frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1));
+
+julia> hs = holes(frame);
+
+julia> length(hs)
+1
+
+julia> contains(hs[1], 0, 0)
+true
+```
+"""
+function holes(region::Region)
+    @assert !region.complement "holes: not defined for complement regions"
+    isempty(region) && return Region[]
+    (l, t, r, b) = bounds(region)
+    (l == r || b == t) && return Region[]   # too narrow to enclose a hole
+    bbox = region_from_box(l, t, r, b)
+    complement_in_box = difference(bbox, region)
+    isempty(complement_in_box) && return Region[]
+    comps = components(complement_in_box, unsigned(0), unsigned(0))
+    return filter(c -> !(left(c) == l || right(c) == r ||
+                         bottom(c) == b || top(c) == t), comps)
+end
+
+"""
+    fill_holes(region::Region)
+
+Fill the holes of a region.
+
+Returns a new region equal to `region` with all enclosed holes filled in.
+If the region has no holes the original region is returned unchanged.
+
+Only non-complement regions are supported.
+
+```jldoctest
+julia> using Regions
+
+julia> frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1));
+
+julia> filled = fill_holes(frame);
+
+julia> contains(filled, 0, 0)
+true
+
+julia> contains(filled, -3, 0)
+true
+```
+"""
+function fill_holes(region::Region)
+    @assert !region.complement "fill_holes: not defined for complement regions"
+    hs = holes(region)
+    isempty(hs) && return region
+    return reduce((a, b) -> union(a, b), hs; init=region)
 end
 

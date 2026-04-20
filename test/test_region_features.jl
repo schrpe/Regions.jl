@@ -1,0 +1,177 @@
+@testset "Region Features" begin
+
+    # ── Phase A: Basic Geometry ───────────────────────────────────────────────
+
+    @testset "area" begin
+        @test area(Region(Run[])) == 0
+        @test area(Region([Run(2, 3:3)])) == 1
+        @test area(Region([Run(0, -1:1), Run(1, -1:1), Run(2, -1:1)])) == 9
+    end
+
+    @testset "width" begin
+        @test width(Region([Run(0, 0:0)])) == 1
+        @test width(Region([Run(0, -1:1), Run(1, -1:1), Run(2, -1:1)])) == 3
+        @test width(Region([Run(-2, 0:0), Run(3, 0:0)])) == 6
+    end
+
+    @testset "height" begin
+        @test height(Region([Run(0, 0:0)])) == 1
+        @test height(Region([Run(0, -1:1), Run(1, -1:1), Run(2, -1:1)])) == 3
+        @test height(Region([Run(0, -2:3)])) == 6
+    end
+
+    @testset "bounds_center" begin
+        @test bounds_center(Region([Run(0, -1:1), Run(1, -1:1), Run(2, -1:1)])) == (1.0, 0.0)
+        @test bounds_center(Region([Run(0, 0:1), Run(1, 0:1)])) == (0.5, 0.5)
+    end
+
+    @testset "aspect_ratio" begin
+        @test aspect_ratio(Region([Run(0, 0:3), Run(1, 0:3)])) ≈ 0.5
+        @test aspect_ratio(Region([Run(0, 0:0), Run(1, 0:0), Run(2, 0:0)])) ≈ 3.0
+    end
+
+    # ── Phase B: Moments ─────────────────────────────────────────────────────
+
+    @testset "moments - single pixel" begin
+        m = moments(Region([Run(2, 3:3)]))
+        @test m.m00 ≈ 1.0
+        @test m.m10 ≈ 2.0
+        @test m.m01 ≈ 3.0
+        @test m.m20 ≈ 4.0
+        @test m.m11 ≈ 6.0
+        @test m.m02 ≈ 9.0
+        @test m.m30 ≈ 8.0
+        @test m.m21 ≈ 12.0
+        @test m.m12 ≈ 18.0
+        @test m.m03 ≈ 27.0
+    end
+
+    @testset "moments - 3×3 box at origin" begin
+        r = Region([Run(c, -1:1) for c in -1:1])
+        m = moments(r)
+        @test m.m00 ≈ 9.0
+        @test m.m10 ≈ 0.0   # symmetric around x=0
+        @test m.m01 ≈ 0.0   # symmetric around y=0
+        @test m.m11 ≈ 0.0   # symmetric
+    end
+
+    @testset "moments - negative rows" begin
+        r = Region([Run(0, -2:-1)])
+        m = moments(r)
+        @test m.m00 ≈ 2.0
+        @test m.m01 ≈ -3.0   # (-2 + -1) = -3
+        @test m.m02 ≈ 5.0    # (-2)² + (-1)² = 4 + 1
+    end
+
+    @testset "centroid" begin
+        @test centroid(Region([Run(0, -1:1), Run(1, -1:1), Run(2, -1:1)])) == (1.0, 0.0)
+        @test centroid(Region([Run(2, 3:3)])) == (2.0, 3.0)
+    end
+
+    @testset "equivalent_ellipse" begin
+        r3x3 = Region([Run(c, -1:1) for c in -1:1])
+        e = equivalent_ellipse(r3x3)
+        @test e.center == (0.0, 0.0)
+        @test e.semi_axes[1] ≈ e.semi_axes[2]  # square → circle
+        @test e.angle ≈ 0.0
+
+        # Horizontal bar: wider than tall → major axis along column direction
+        rbar = Region([Run(c, 0:0) for c in -4:4])
+        ebar = equivalent_ellipse(rbar)
+        @test ebar.semi_axes[1] > ebar.semi_axes[2]
+    end
+
+    # ── Phase C: Perimeter ────────────────────────────────────────────────────
+
+    @testset "perimeter" begin
+        @test perimeter(Region(Run[])) == 0.0
+        @test perimeter(Region([Run(0, 0:0)])) == 4.0         # single pixel
+        @test perimeter(Region([Run(0, 0:1), Run(1, 0:1)])) == 8.0   # 2×2 box
+        @test perimeter(Region([Run(c, 0:2) for c in 0:2])) == 12.0  # 3×3 box
+    end
+
+    @testset "compactness" begin
+        # 4-connected edge perimeter overestimates geometric perimeter,
+        # so compactness > 1 even for circles — but it is a useful relative metric.
+        rc = region_from_circle(0, 0, 50)
+        rbar = Region([Run(c, 0:0) for c in 0:99])
+        # A circle should be more compact (lower value) than a thin bar.
+        @test compactness(rc) < compactness(rbar)
+    end
+
+    # ── Phase D: Convex Hull ─────────────────────────────────────────────────
+
+    @testset "convex_hull" begin
+        r = Region([Run(0, 0:1), Run(1, 0:1)])
+        h = convex_hull(r)
+        @test length(h) == 4
+    end
+
+    @testset "convex_area" begin
+        # 2×2 box: convex_area should equal area (it's already convex)
+        r = Region([Run(0, 0:1), Run(1, 0:1)])
+        @test convex_area(r) ≈ 4.0
+        @test convex_area(r) ≈ Float64(area(r))
+
+        # 5×5 box
+        r5 = Region([Run(c, 0:4) for c in 0:4])
+        @test convex_area(r5) ≈ 25.0
+
+        # Larger circle: convex_area ≈ area (circle is convex)
+        rc = region_from_circle(0, 0, 30)
+        @test convex_area(rc) / area(rc) > 0.999
+    end
+
+    @testset "convex_perimeter" begin
+        r = Region([Run(0, 0:1), Run(1, 0:1)])
+        @test convex_perimeter(r) ≈ 8.0
+    end
+
+    @testset "convexity" begin
+        r = Region([Run(0, 0:1), Run(1, 0:1)])
+        @test convexity(r) ≈ 1.0
+    end
+
+    @testset "perforation" begin
+        r = Region([Run(0, 0:1), Run(1, 0:1)])
+        @test perforation(r) ≈ 0.0
+    end
+
+    @testset "feret_diameters" begin
+        mn, mx = feret_diameters(Region([Run(0, 0:0)]))
+        # Half-integer corners: pixel square diagonal = sqrt(2)
+        @test mn ≈ 1.0
+        @test mx ≈ sqrt(2)
+
+        # Square: min feret = side length, max feret = diagonal
+        r4 = Region([Run(c, 0:3) for c in 0:3])
+        mn4, mx4 = feret_diameters(r4)
+        @test mn4 ≈ 4.0 atol=0.01
+        @test mx4 ≈ 4.0 * sqrt(2) atol=0.01
+    end
+
+    # ── Phase E: Hole Features ────────────────────────────────────────────────
+
+    @testset "number_of_holes and area_of_holes" begin
+        # Solid square: no holes
+        r = Region([Run(c, 0:4) for c in 0:4])
+        @test number_of_holes(r) == 0
+        @test area_of_holes(r) == 0
+
+        # Ring: 1 hole
+        ring_cols = [Run(c, 0:4) for c in 0:4]
+        # Remove interior (column 1-3, rows 1-3)
+        ring_full = Region([Run(c, 0:4) for c in 0:4])
+        # Manually build a ring: 5 full rows but hollow middle
+        ring = Region(vcat(
+            [Run(0, 0:4)],
+            [Run(1, 0:0), Run(1, 4:4)],
+            [Run(2, 0:0), Run(2, 4:4)],
+            [Run(3, 0:0), Run(3, 4:4)],
+            [Run(4, 0:4)]
+        ))
+        @test number_of_holes(ring) == 1
+        @test area_of_holes(ring) == 9
+    end
+
+end

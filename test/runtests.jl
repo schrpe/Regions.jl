@@ -8,5 +8,7 @@ using Test
     include("test_range.jl")
     include("test_run.jl")
     include("test_region.jl")
+    include("test_morphology.jl")
+    include("test_region_features.jl")
 
 end
