@@ -1,46 +1,46 @@
 # Unit tests for morphological operations.
 # This file is supposed to be included from runtests.jl.
 
-@testset "Run minkowski_addition" begin
+@testset "Run _minkowski_addition" begin
 
     # Column and rows shift by the respective components
-    @test minkowski_addition(Run(0, 0:0), Run(0, 0:0)) == Run(0, 0:0)
-    @test minkowski_addition(Run(1, 2:4), Run(0, -1:1)) == Run(1, 1:5)
-    @test minkowski_addition(Run(-1, 0:2), Run(2, 3:5)) == Run(1, 3:7)
-    @test minkowski_addition(Run(3, -2:2), Run(-3, -2:2)) == Run(0, -4:4)
+    @test Regions._minkowski_addition(Run(0, 0:0), Run(0, 0:0)) == Run(0, 0:0)
+    @test Regions._minkowski_addition(Run(1, 2:4), Run(0, -1:1)) == Run(1, 1:5)
+    @test Regions._minkowski_addition(Run(-1, 0:2), Run(2, 3:5)) == Run(1, 3:7)
+    @test Regions._minkowski_addition(Run(3, -2:2), Run(-3, -2:2)) == Run(0, -4:4)
 
     # Single-pixel run ⊕ multi-row run = same multi-row run shifted
-    @test minkowski_addition(Run(0, 5:5), Run(0, -2:2)) == Run(0, 3:7)
+    @test Regions._minkowski_addition(Run(0, 5:5), Run(0, -2:2)) == Run(0, 3:7)
 
     # Commutativity
     a = Run(1, 0:3)
     b = Run(-1, 2:5)
-    @test minkowski_addition(a, b) == minkowski_addition(b, a)
+    @test Regions._minkowski_addition(a, b) == Regions._minkowski_addition(b, a)
 
     # Result is never empty when inputs are non-empty
-    @test !isempty(minkowski_addition(Run(0, 0:0), Run(0, 0:0)))
+    @test !isempty(Regions._minkowski_addition(Run(0, 0:0), Run(0, 0:0)))
 
-end # "Run minkowski_addition"
+end # "Run _minkowski_addition"
 
-@testset "Run minkowski_subtraction" begin
+@testset "Run _minkowski_subtraction" begin
 
-    @test minkowski_subtraction(Run(3, 1:5), Run(1, 0:2)) == Run(2, 1:3)
-    @test minkowski_subtraction(Run(0, -3:3), Run(0, -1:1)) == Run(0, -2:2)
-    @test minkowski_subtraction(Run(2, 0:4), Run(2, 0:4)) == Run(0, 0:0)
+    @test Regions._minkowski_subtraction(Run(3, 1:5), Run(1, 0:2)) == Run(2, 1:3)
+    @test Regions._minkowski_subtraction(Run(0, -3:3), Run(0, -1:1)) == Run(0, -2:2)
+    @test Regions._minkowski_subtraction(Run(2, 0:4), Run(2, 0:4)) == Run(0, 0:0)
 
     # Result is empty when b's row span exceeds a's
-    @test isempty(minkowski_subtraction(Run(0, 0:1), Run(0, 0:3)))
-    @test isempty(minkowski_subtraction(Run(0, 0:0), Run(0, -1:1)))
+    @test isempty(Regions._minkowski_subtraction(Run(0, 0:1), Run(0, 0:3)))
+    @test isempty(Regions._minkowski_subtraction(Run(0, 0:0), Run(0, -1:1)))
 
     # Inverse relationship: (A ⊕ B) ⊖ B = A when B is a single-row run
     a = Run(2, 1:3)
     b = Run(0, 0:0)
-    @test minkowski_subtraction(minkowski_addition(a, b), b) == a
+    @test Regions._minkowski_subtraction(Regions._minkowski_addition(a, b), b) == a
 
     # Column shifts cancel
-    @test minkowski_subtraction(Run(5, 0:0), Run(3, 0:0)).column == 2
+    @test Regions._minkowski_subtraction(Run(5, 0:0), Run(3, 0:0)).column == 2
 
-end # "Run minkowski_subtraction"
+end # "Run _minkowski_subtraction"
 
 # Shared fixtures used throughout the morphological tests:
 #
@@ -49,66 +49,66 @@ end # "Run minkowski_subtraction"
 #   box5   — 5×5 box centred at origin: cols -2:2, rows -2:2
 #   box7   — 7×7 box centred at origin: cols -3:3, rows -3:3
 
-@testset "minkowski_addition(Region)" begin
+@testset "_minkowski_addition(Region)" begin
 
     pixel = Region([Run(0, 0:0)])
     box3  = region_from_box(-1, 1, 1, -1)
     box5  = region_from_box(-2, 2, 2, -2)
 
     # Identity: A ⊕ {origin} = A
-    @test minkowski_addition(pixel, Region([Run(0, 0:0)])) == pixel
-    @test minkowski_addition(box3, Region([Run(0, 0:0)])) == box3
+    @test Regions._minkowski_addition(pixel, Region([Run(0, 0:0)])) == pixel
+    @test Regions._minkowski_addition(box3, Region([Run(0, 0:0)])) == box3
 
     # Single pixel ⊕ horizontal bar = the bar
     hbar = Region([Run(-1, 0:0), Run(0, 0:0), Run(1, 0:0)])
-    @test minkowski_addition(pixel, hbar) == hbar
+    @test Regions._minkowski_addition(pixel, hbar) == hbar
 
     # box3 ⊕ box3 = box5  (since invert(box3)==box3, dilation=mink_add here)
-    @test minkowski_addition(box3, box3) == box5
+    @test Regions._minkowski_addition(box3, box3) == box5
 
     # Commutativity
     a = region_from_box(0, 2, 2, 0)
     b = region_from_box(-1, 1, 0, -1)
-    @test minkowski_addition(a, b) == minkowski_addition(b, a)
+    @test Regions._minkowski_addition(a, b) == Regions._minkowski_addition(b, a)
 
     # Empty inputs
-    @test minkowski_addition(Region(), box3) == Region()
-    @test minkowski_addition(box3, Region()) == box3
+    @test Regions._minkowski_addition(Region(), box3) == Region()
+    @test Regions._minkowski_addition(box3, Region()) == box3
 
     # Result contains origin if both contain origin
-    @test contains(minkowski_addition(pixel, pixel), 0, 0)
+    @test contains(Regions._minkowski_addition(pixel, pixel), 0, 0)
 
-end # "minkowski_addition(Region)"
+end # "_minkowski_addition(Region)"
 
-@testset "minkowski_subtraction(Region)" begin
+@testset "_minkowski_subtraction(Region)" begin
 
     pixel = Region([Run(0, 0:0)])
     box3  = region_from_box(-1, 1, 1, -1)
     box5  = region_from_box(-2, 2, 2, -2)
 
     # box5 ⊖ box3 = box3
-    @test minkowski_subtraction(box5, box3) == box3
+    @test Regions._minkowski_subtraction(box5, box3) == box3
 
     # A ⊖ {origin} = A
-    @test minkowski_subtraction(box3, Region([Run(0, 0:0)])) == box3
-    @test minkowski_subtraction(pixel, Region([Run(0, 0:0)])) == pixel
+    @test Regions._minkowski_subtraction(box3, Region([Run(0, 0:0)])) == box3
+    @test Regions._minkowski_subtraction(pixel, Region([Run(0, 0:0)])) == pixel
 
     # Eroding a pixel by anything larger than itself → empty
-    @test isempty(minkowski_subtraction(pixel, box3))
+    @test isempty(Regions._minkowski_subtraction(pixel, box3))
 
     # Empty first argument → empty result
-    @test isempty(minkowski_subtraction(Region(), box3))
+    @test isempty(Regions._minkowski_subtraction(Region(), box3))
 
     # Empty second argument → unchanged
-    @test minkowski_subtraction(box3, Region()) == box3
+    @test Regions._minkowski_subtraction(box3, Region()) == box3
 
     # (A ⊕ B) ⊖ B ⊆ A   (not strict equality in general, but holds for convex shapes)
     a = region_from_box(0, 3, 3, 0)
     b = region_from_box(-1, 1, 1, -1)
-    recovered = minkowski_subtraction(minkowski_addition(a, b), b)
+    recovered = Regions._minkowski_subtraction(Regions._minkowski_addition(a, b), b)
     @test recovered == a
 
-end # "minkowski_subtraction(Region)"
+end # "_minkowski_subtraction(Region)"
 
 @testset "erosion" begin
 
@@ -449,12 +449,12 @@ end # "fill_holes"
     closed = closing(two, se)
     @test length(closed) == 2
 
-    # minkowski_addition keeps both
-    mink_add = minkowski_addition(two, se)
+    # _minkowski_addition keeps both
+    mink_add = Regions._minkowski_addition(two, se)
     @test length(mink_add) == 2
 
-    # minkowski_subtraction drops the pixel
-    mink_sub = minkowski_subtraction(two, se)
+    # _minkowski_subtraction drops the pixel
+    mink_sub = Regions._minkowski_subtraction(two, se)
     @test length(mink_sub) == 1
 
     # morphological_gradient: each non-empty region produces a result

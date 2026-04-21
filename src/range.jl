@@ -53,7 +53,13 @@ julia> using Regions
 julia> invert(5:10)
 -10:-5
 
+julia> -(5:10)
+-10:-5
+
 julia> invert(invert(0:100))
+0:100
+
+julia> invert(-(0:100))
 0:100
 ```
 """
@@ -84,7 +90,6 @@ false
 ```
 """
 contains(x::UnitRange{Int}, y::Integer) = y ∈ x
-∈(x::UnitRange{Int}, y::Integer) = y ∈ x
 
 """
     isoverlapping(x::UnitRange{Int}, y::UnitRange{Int})

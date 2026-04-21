@@ -51,20 +51,20 @@ using Images: Gray, RGBA
     @test Region([Run(1, 1:2), Run(2, 3:4)]) - [5, 6] == Region([Run(-4, -5:-4), Run(-3, -3:-2)])
     @test Region([Run(1, 1:2), Run(2, 3:4)]) + [5, 6] == Region([Run(6, 7:8), Run(7, 9:10)])
 
-    # center: moves bounding-box midpoint to origin via integer division
-    let c = center(Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]))
+    # center_region: moves bounding-box midpoint to origin via integer division
+    let c = center_region(Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]))
         @test left(c) == -1 && right(c) == 1
         @test bottom(c) == -1 && top(c) == 1
     end
     # even column span: columns 10–11 → midpoint = (10+11)÷2 = 10, shift −10 → 0:1
-    let c = center(Region([Run(10, 5:6), Run(11, 5:6)]))
+    let c = center_region(Region([Run(10, 5:6), Run(11, 5:6)]))
         @test left(c) == 0 && right(c) == 1
     end
     # single pixel is already trivially centerable
-    @test center(Region([Run(7, 3:3)])) == Region([Run(0, 0:0)])
+    @test center_region(Region([Run(7, 3:3)])) == Region([Run(0, 0:0)])
     # shape is preserved: same area
     let r = Region([Run(c, 1:3) for c in 1:5])
-        @test area(center(r)) == area(r)
+        @test area(center_region(r)) == area(r)
     end
 
     # contains: Run(column, rows) — contains(r, x, y) checks column==x and y∈rows
@@ -126,44 +126,44 @@ using Images: Gray, RGBA
     @test complement(Region([Run(0, 0:1)], true)).complement == false;
     @test complement(Region([Run(0, 0:1)], true)).runs == Region([Run(0, 0:1)]).runs;
 
-    @test Regions.merge([Run(0, 0:1)], [Run(1, 0:1)]) == [Run(0, 0:1), Run(1, 0:1)]
-    @test Regions.merge([Run(1, 0:1)], [Run(0, 0:1)]) == [Run(0, 0:1), Run(1, 0:1)]
-    @test Regions.merge([Run(0, 0:1), Run(1, 0:1)], [Run(0, 1:2), Run(1, 1:2)]) == [Run(0, 0:1), Run(0, 1:2), Run(1, 0:1), Run(1, 1:2)]
-    @test Regions.merge([Run(0, 1:2), Run(1, 1:2)], [Run(0, 0:1), Run(1, 0:1)]) == [Run(0, 0:1), Run(0, 1:2), Run(1, 0:1), Run(1, 1:2)]
+    @test Regions._merge([Run(0, 0:1)], [Run(1, 0:1)]) == [Run(0, 0:1), Run(1, 0:1)]
+    @test Regions._merge([Run(1, 0:1)], [Run(0, 0:1)]) == [Run(0, 0:1), Run(1, 0:1)]
+    @test Regions._merge([Run(0, 0:1), Run(1, 0:1)], [Run(0, 1:2), Run(1, 1:2)]) == [Run(0, 0:1), Run(0, 1:2), Run(1, 0:1), Run(1, 1:2)]
+    @test Regions._merge([Run(0, 1:2), Run(1, 1:2)], [Run(0, 0:1), Run(1, 0:1)]) == [Run(0, 0:1), Run(0, 1:2), Run(1, 0:1), Run(1, 1:2)]
 
     @test sort([Run(0, 0:1), Run(1, 0:1)]) == [Run(0, 0:1), Run(1, 0:1)]
     @test sort([Run(1, 0:1), Run(0, 0:1)]) == [Run(0, 0:1), Run(1, 0:1)]
     a = [Run(0, 0:1), Run(1, 0:1)]; sort!(a); @test a == [Run(0, 0:1), Run(1, 0:1)]
     a = [Run(1, 0:1), Run(0, 0:1)]; sort!(a); @test a == [Run(0, 0:1), Run(1, 0:1)]
 
-    a = [Run(0, 0:1)]; Regions.pack!(a); @test a == [Run(0, 0:1)]
-    a = [Run(0, 0:1), Run(0, 1:2)]; Regions.pack!(a); @test a == [Run(0, 0:2)]
-    a = [Run(0, 0:1), Run(0, 2:3)]; Regions.pack!(a); @test a == [Run(0, 0:3)]
-    a = [Run(0, 0:3), Run(0, 0:1)]; Regions.pack!(a); @test a == [Run(0, 0:3)]
-    a = [Run(0, 0:3), Run(0, 1:2)]; Regions.pack!(a); @test a == [Run(0, 0:3)]
-    a = [Run(0, 0:3), Run(0, 2:3)]; Regions.pack!(a); @test a == [Run(0, 0:3)]
-    a = [Run(0, 0:3), Run(0, 0:3)]; Regions.pack!(a); @test a == [Run(0, 0:3)]
-    a = [Run(0, 0:1), Run(0, 3:4)]; Regions.pack!(a); @test a == [Run(0, 0:1), Run(0, 3:4)]
+    a = [Run(0, 0:1)]; Regions._pack!(a); @test a == [Run(0, 0:1)]
+    a = [Run(0, 0:1), Run(0, 1:2)]; Regions._pack!(a); @test a == [Run(0, 0:2)]
+    a = [Run(0, 0:1), Run(0, 2:3)]; Regions._pack!(a); @test a == [Run(0, 0:3)]
+    a = [Run(0, 0:3), Run(0, 0:1)]; Regions._pack!(a); @test a == [Run(0, 0:3)]
+    a = [Run(0, 0:3), Run(0, 1:2)]; Regions._pack!(a); @test a == [Run(0, 0:3)]
+    a = [Run(0, 0:3), Run(0, 2:3)]; Regions._pack!(a); @test a == [Run(0, 0:3)]
+    a = [Run(0, 0:3), Run(0, 0:3)]; Regions._pack!(a); @test a == [Run(0, 0:3)]
+    a = [Run(0, 0:1), Run(0, 3:4)]; Regions._pack!(a); @test a == [Run(0, 0:1), Run(0, 3:4)]
 
     @test union([Run(0, 0:1), Run(0, 0:1)]) == [Run(0, 0:1)]
     @test union([Run(0, 0:1), Run(1, 0:1)]) == [Run(0, 0:1), Run(1, 0:1)]
-    @test union([Run(0, 0:1), Run(1, 0:1)], [Run(0, 1:2), Run(1, 1:2)]) == [Run(0, 0:2), Run(1, 0:2)]
+    @test Regions._union([Run(0, 0:1), Run(1, 0:1)], [Run(0, 1:2), Run(1, 1:2)]) == [Run(0, 0:2), Run(1, 0:2)]
 
-    a = [Run(0, 0:1)]; Regions.intersect!(a); @test a == Run[]
-    a = [Run(0, 0:1), Run(0, 2:3)]; Regions.intersect!(a); @test a == Run[]
-    a = [Run(0, 0:1), Run(0, 1:2)]; Regions.intersect!(a); @test a == [Run(0, 1:1)]
-    a = [Run(0, 0:3), Run(0, 1:2)]; Regions.intersect!(a); @test a == [Run(0, 1:2)]
+    a = [Run(0, 0:1)]; Regions._intersect!(a); @test a == Run[]
+    a = [Run(0, 0:1), Run(0, 2:3)]; Regions._intersect!(a); @test a == Run[]
+    a = [Run(0, 0:1), Run(0, 1:2)]; Regions._intersect!(a); @test a == [Run(0, 1:1)]
+    a = [Run(0, 0:3), Run(0, 1:2)]; Regions._intersect!(a); @test a == [Run(0, 1:2)]
 
-    @test intersection([Run(0, 0:1)], [Run(1, 0:1)]) == Run[]
-    @test intersection([Run(0, 0:1)], [Run(0, 0:1)]) == [Run(0, 0:1)]
+    @test Regions._intersection([Run(0, 0:1)], [Run(1, 0:1)]) == Run[]
+    @test Regions._intersection([Run(0, 0:1)], [Run(0, 0:1)]) == [Run(0, 0:1)]
 
-    @test difference(Run[], Run[]) == Run[]
-    @test difference([Run(0, 0:1)], Run[]) == [Run(0, 0:1)]
-    @test difference(Run[], [Run(0, 0:1)]) == Run[]
-    @test difference([Run(0, 0:1)], [Run(0, 0:1)]) == Run[]
-    @test difference([Run(0, 0:2)], [Run(0, 0:0)]) == [Run(0, 1:2)]
-    @test difference([Run(0, 0:2)], [Run(0, 1:1)]) == [Run(0, 0:0), Run(0, 2:2)]
-    @test difference([Run(0, 0:2)], [Run(0, 2:2)]) == [Run(0, 0:1)]
+    @test Regions._difference(Run[], Run[]) == Run[]
+    @test Regions._difference([Run(0, 0:1)], Run[]) == [Run(0, 0:1)]
+    @test Regions._difference(Run[], [Run(0, 0:1)]) == Run[]
+    @test Regions._difference([Run(0, 0:1)], [Run(0, 0:1)]) == Run[]
+    @test Regions._difference([Run(0, 0:2)], [Run(0, 0:0)]) == [Run(0, 1:2)]
+    @test Regions._difference([Run(0, 0:2)], [Run(0, 1:1)]) == [Run(0, 0:0), Run(0, 2:2)]
+    @test Regions._difference([Run(0, 0:2)], [Run(0, 2:2)]) == [Run(0, 0:1)]
 
 end # "Region"
 

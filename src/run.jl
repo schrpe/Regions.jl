@@ -9,7 +9,6 @@ export Run
 export isempty, isless, invert
 export translate, -, +
 export contains, isoverlapping, istouching, isclose
-export minkowski_addition, minkowski_subtraction
 
 """
     Run
@@ -134,6 +133,9 @@ julia> using Regions
 julia> contains(Run(7, 2:8), 7, 5)
 true
 
+julia> contains(Run(7, 2:8), [7, 5])
+true
+
 julia> contains(Run(7, 2:8), 7, 10)
 false
 
@@ -208,7 +210,7 @@ isclose(a::Run, b::Run, d::Integer) = isclose(a, b, d, d)
 isclose(a::Run, b::Run, distance::Vector{Int}) = isclose(a, b, distance[1], distance[2])
 
 """
-    minkowski_addition(a::Run, b::Run)
+    _minkowski_addition(a::Run, b::Run)
 
 Compute the Minkowski sum of two runs.
 
@@ -216,23 +218,13 @@ Each run represents a vertical segment at a given column: `Run(col, rows)`. The
 Minkowski sum is the segment whose column is `a.column + b.column` and whose row
 range is the interval sum `(a.rows.start + b.rows.start):(a.rows.stop + b.rows.stop)`.
 
-This is the building block used by [`minkowski_addition(::Region, ::Region)`](@ref).
-
-```jldoctest
-julia> using Regions
-
-julia> minkowski_addition(Run(1, 2:4), Run(0, -1:1))
-Run(1, 1:5)
-
-julia> minkowski_addition(Run(-1, 0:2), Run(2, 3:5))
-Run(1, 3:7)
-```
+This is the primitive used by [`_minkowski_addition(::Region, ::Region)`](@ref).
 """
-minkowski_addition(a::Run, b::Run) =
+_minkowski_addition(a::Run, b::Run) =
     Run(a.column + b.column, (a.rows.start + b.rows.start):(a.rows.stop + b.rows.stop))
 
 """
-    minkowski_subtraction(a::Run, b::Run)
+    _minkowski_subtraction(a::Run, b::Run)
 
 Compute the Minkowski difference of two runs.
 
@@ -241,17 +233,7 @@ Minkowski difference `a ⊖ b` is the segment whose column is `a.column - b.colu
 and whose row range is `(a.rows.start - b.rows.start):(a.rows.stop - b.rows.stop)`.
 The result may be empty when `b`'s row range is wider than `a`'s.
 
-This is the building block used by [`minkowski_subtraction(::Region, ::Region)`](@ref).
-
-```jldoctest
-julia> using Regions
-
-julia> minkowski_subtraction(Run(3, 1:5), Run(1, 0:2))
-Run(2, 1:3)
-
-julia> isempty(minkowski_subtraction(Run(0, 0:1), Run(0, 0:3)))
-true
-```
+This is the primitive used by [`_minkowski_subtraction(::Region, ::Region)`](@ref).
 """
-minkowski_subtraction(a::Run, b::Run) =
+_minkowski_subtraction(a::Run, b::Run) =
     Run(a.column - b.column, (a.rows.start - b.rows.start):(a.rows.stop - b.rows.stop))

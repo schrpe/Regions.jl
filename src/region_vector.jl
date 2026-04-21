@@ -6,7 +6,6 @@
 
 export left, top, right, bottom, bounds
 export regions_to_image
-export minkowski_addition, minkowski_subtraction
 export erosion, dilation, opening, closing
 export morphological_gradient, inner_boundary, outer_boundary
 export fill_holes
@@ -223,45 +222,23 @@ function _morph_map(f, regions::Vector{Region})
 end
 
 """
-    minkowski_addition(regions::Vector{Region}, se::Region)
+    _minkowski_addition(regions::Vector{Region}, se::Region)
 
-Apply [`minkowski_addition`](@ref) to each region in `regions` with structuring
+Apply [`_minkowski_addition`](@ref) to each region in `regions` with structuring
 element `se`, returning a new vector that contains only the non-empty results.
-
-```jldoctest
-julia> using Regions
-
-julia> regions = [Region([Run(0, 0:0)]), Region([Run(5, 5:5)])];
-
-julia> se = Region([Run(-1, 0:0), Run(0, 0:0), Run(1, 0:0)]);
-
-julia> length(minkowski_addition(regions, se)) == 2
-true
-```
 """
-minkowski_addition(regions::Vector{Region}, se::Region) =
-    _morph_map(r -> minkowski_addition(r, se), regions)
+_minkowski_addition(regions::Vector{Region}, se::Region) =
+    _morph_map(r -> _minkowski_addition(r, se), regions)
 
 """
-    minkowski_subtraction(regions::Vector{Region}, se::Region)
+    _minkowski_subtraction(regions::Vector{Region}, se::Region)
 
-Apply [`minkowski_subtraction`](@ref) to each region in `regions` with
+Apply [`_minkowski_subtraction`](@ref) to each region in `regions` with
 structuring element `se`, returning a new vector that contains only the
 non-empty results.
-
-```jldoctest
-julia> using Regions
-
-julia> regions = [region_from_box(-2, 2, 2, -2), Region([Run(0, 0:0)])];
-
-julia> se = region_from_box(-1, 1, 1, -1);
-
-julia> length(minkowski_subtraction(regions, se))
-1
-```
 """
-minkowski_subtraction(regions::Vector{Region}, se::Region) =
-    _morph_map(r -> minkowski_subtraction(r, se), regions)
+_minkowski_subtraction(regions::Vector{Region}, se::Region) =
+    _morph_map(r -> _minkowski_subtraction(r, se), regions)
 
 """
     erosion(regions::Vector{Region}, se::Region)

@@ -26,6 +26,7 @@ export binarize, components
 include("range.jl")
 include("run.jl")
 include("region.jl")
+include("region_morphology.jl")
 include("region_vector.jl")
 include("region_features.jl")
 
