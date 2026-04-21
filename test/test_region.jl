@@ -439,6 +439,17 @@ end # "region_from_polygon"
 
 end # "Set operations on empty regions"
 
+@testset "difference does not mutate first operand" begin
+    a = region_from_box(0, 3, 4, 0)   # 5×4 = 20 pixels
+    b = region_from_box(3, 5, 7, 2)   # 5×4 = 20 pixels, overlapping 2×2 = 4
+    a_runs_before = copy(a.runs)
+    _ = difference(a, b)
+    @test a.runs == a_runs_before      # a must not be modified
+    @test area(a) == 20
+    @test area(difference(a, b)) == 16
+    @test area(difference(b, a)) == 16
+end
+
 @testset "bounds(Vector{Region})" begin
 
     # Empty vector → missing

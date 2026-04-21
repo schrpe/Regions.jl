@@ -519,7 +519,7 @@ function _difference(a::Vector{Run}, b::Vector{Run})
     end
 
     if isempty(b)
-        return a
+        return copy(a)
     end
 
     res = Run[]
@@ -547,27 +547,28 @@ function _difference(a::Vector{Run}, b::Vector{Run})
         if isnothing(first_b) || a[a_index].column != b[first_b].column
             push!(res, a[a_index])
         else
+            a_run = a[a_index]  # local copy — never mutate the input vector
             for i in first_b:last_b
-                if isoverlapping(a[a_index], b[i])
+                if isoverlapping(a_run, b[i])
                     # total overlap, erase all of a_run and break
-                    if b[i].rows.start <= a[a_index].rows.start && b[i].rows.stop >= a[a_index].rows.stop
-                        a[a_index] = Run(a[a_index].column, a[a_index].rows.start:a[a_index].rows.start-1)
-                        break;
+                    if b[i].rows.start <= a_run.rows.start && b[i].rows.stop >= a_run.rows.stop
+                        a_run = Run(a_run.column, a_run.rows.start:a_run.rows.start-1)
+                        break
                     # overlap at start only, shorten a_run at start and continue
-                    elseif b[i].rows.start <= a[a_index].rows.start
-                        a[a_index] = Run(a[a_index].column, b[i].rows.stop+1:a[a_index].rows.stop)
+                    elseif b[i].rows.start <= a_run.rows.start
+                        a_run = Run(a_run.column, b[i].rows.stop+1:a_run.rows.stop)
                     # overlap at end only, shorten a_run at end and continue
-                    elseif b[i].rows.stop >= a[a_index].rows.stop
-                        a[a_index] = Run(a[a_index].column, a[a_index].rows.start:b[i].rows.start-1)
+                    elseif b[i].rows.stop >= a_run.rows.stop
+                        a_run = Run(a_run.column, a_run.rows.start:b[i].rows.start-1)
                     # overlap in the middle, split a_run into two and continue
                     else
-                        push!(res, Run(a[a_index].column, a[a_index].rows.start:b[i].rows.start-1))
-                        a[a_index] = Run(a[a_index].column, b[i].rows.stop+1:a[a_index].rows.stop)
+                        push!(res, Run(a_run.column, a_run.rows.start:b[i].rows.start-1))
+                        a_run = Run(a_run.column, b[i].rows.stop+1:a_run.rows.stop)
                     end
                 end
             end
-            if !isempty(a[a_index])
-                push!(res, a[a_index])
+            if !isempty(a_run)
+                push!(res, a_run)
             end
         end
     end

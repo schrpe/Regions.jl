@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(julia --project=. --load docs/generate_gear_images.jl)"
+    ]
+  }
+}
