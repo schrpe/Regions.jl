@@ -44,6 +44,9 @@ translate(x::UnitRange{Int}, y::Integer) = x + y
 Invert a range. Inversion mirrors a range at the origin. A range is 
 inverted by reversing and inverting each of its coordinates.
 
+In addition to the invert method, you can also use the - operator to
+invert a range.
+
 ```jldoctest
 julia> using Regions
 
@@ -55,6 +58,7 @@ julia> invert(invert(0:100))
 ```
 """
 invert(x::UnitRange{Int}) = UnitRange(-x.stop : -x.start)
+-(x::UnitRange{Int}) = UnitRange(-x.stop : -x.start)
 
 """
     contains(x::UnitRange{Int}, y::Integer)
@@ -80,6 +84,7 @@ false
 ```
 """
 contains(x::UnitRange{Int}, y::Integer) = y ∈ x
+∈(x::UnitRange{Int}, y::Integer) = y ∈ x
 
 """
     isoverlapping(x::UnitRange{Int}, y::UnitRange{Int})

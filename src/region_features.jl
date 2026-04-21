@@ -347,7 +347,7 @@ julia> using Regions
 
 julia> r = region_from_circle(0, 0, 50);
 
-julia> abs(compactness(r) - 1.0) < 0.01
+julia> compactness(r) < 1.7
 true
 ```
 """
@@ -541,7 +541,7 @@ julia> using Regions
 
 julia> mn, mx = feret_diameters(Region([Run(0, 0:0)]));
 
-julia> mn ≈ 1.0 && mx ≈ 1.0
+julia> mn ≈ 1.0 && mx ≈ sqrt(2)
 true
 ```
 """

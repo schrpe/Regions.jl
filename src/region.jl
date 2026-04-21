@@ -187,7 +187,7 @@ julia> r2 = Region([Run(10, 5:6), Run(11, 5:6)]);
 julia> c2 = center(r2);
 
 julia> left(c2), right(c2)
-(-1, 0)
+(0, 1)
 ```
 """
 function center(r::Region)

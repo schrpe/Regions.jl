@@ -312,11 +312,13 @@ Apply [`opening`](@ref) to each region in `regions` with structuring element
 ```jldoctest
 julia> using Regions
 
-julia> big   = region_from_box(-2, 2, 2, -2);
+julia> large = region_from_box(-2, 2, 2, -2);
+
 julia> pixel = Region([Run(0, 0:0)]);
+
 julia> se    = region_from_box(-1, 1, 1, -1);
 
-julia> length(opening([big, pixel], se))
+julia> length(opening([large, pixel], se))
 1
 ```
 """
