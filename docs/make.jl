@@ -14,7 +14,12 @@ makedocs(;
         assets=String[],
     ),
     pages=[
-        "Home" => "index.md",
+        "Home"                    => "index.md",
+        "Introduction"            => "introduction.md",
+        "Set Operations"          => "set_operations.md",
+        "Morphological Operations" => "morphology.md",
+        "Blob Analysis"           => "blob_analysis.md",
+        "Reference"               => "reference.md",
     ],
 )
 
