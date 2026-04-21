@@ -67,6 +67,17 @@ using Images: Gray, RGBA
         @test area(center_region(r)) == area(r)
     end
 
+    # is_centered: true iff center_region would leave the region unchanged
+    @test  is_centered(Region([Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)]))  # symmetric box
+    @test  is_centered(Region([Run(0, 0:0)]))                                 # origin pixel
+    @test !is_centered(Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]))      # off-origin box
+    # even span: columns 0:1 → midpoint = 0, so is_centered
+    @test  is_centered(Region([Run(0, 0:1), Run(1, 0:1)]))
+    # center_region always produces a centered result
+    let r = Region([Run(c, 1:3) for c in 3:7])
+        @test is_centered(center_region(r))
+    end
+
     # contains: Run(column, rows) — contains(r, x, y) checks column==x and y∈rows
     @test !contains(Region([Run(0, 0:-1)]), 0, -1)
     @test !contains(Region([Run(0, 0:-1)]), 0, 0)

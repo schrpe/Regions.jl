@@ -6,7 +6,7 @@
 
 import Base: copy, -, union, ==, show
 export Region
-export isempty, ==, copy, invert, -, translate, translate!, center_region, contains, ∈
+export isempty, ==, copy, invert, -, translate, translate!, center_region, is_centered, contains, ∈
 export left, top, right, bottom, bounds
 export complement
 export union, intersection, difference
@@ -195,6 +195,33 @@ function center_region(r::Region)
     Δcol = (left(r)   + right(r)) ÷ 2
     Δrow = (bottom(r) + top(r))   ÷ 2
     return translate(r, -Δcol, -Δrow)
+end
+
+"""
+    is_centered(r::Region) -> Bool
+
+Return `true` if the bounding-box midpoint of `r` is already at the origin,
+i.e. if [`center_region`](@ref) would leave `r` unchanged.
+
+Uses the same integer midpoint arithmetic as `center_region`:
+`Δcol = (left + right) ÷ 2`, `Δrow = (bottom + top) ÷ 2`.
+
+```jldoctest
+julia> using Regions
+
+julia> is_centered(Region([Run(-1, -1:1), Run(0, -1:1), Run(1, -1:1)]))
+true
+
+julia> is_centered(Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]))
+false
+
+julia> is_centered(center_region(Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)])))
+true
+```
+"""
+function is_centered(r::Region)
+    @assert !r.complement && !isempty(r.runs) "is_centered requires a non-empty, non-complement region"
+    (left(r) + right(r)) ÷ 2 == 0 && (bottom(r) + top(r)) ÷ 2 == 0
 end
 
 """
