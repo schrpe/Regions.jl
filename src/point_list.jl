@@ -17,6 +17,9 @@ export minimum_width, maximum_width, feret_diameters
 export minimum_area_bounding_rectangle, minimum_perimeter_bounding_rectangle
 export minimum_bounding_circle
 export translate
+export area, perimeter, simplified_perimeter
+export simplify_radial_distance
+export point_at
 
 """
     PointList
@@ -433,3 +436,178 @@ julia> translate([(0.0,0.0),(1.0,0.0)], 2.0, 3.0)
 translate(pts::PointList, dx::Real, dy::Real) =
     PointList([(x + Float64(dx), y + Float64(dy)) for (x, y) in pts])
 translate(pts::PointList, d::Vector) = translate(pts, d[1], d[2])
+
+
+"""
+    area(pts::PointList) -> Float64
+
+Return the signed area of a polygon using the shoelace formula.
+Positive for counter-clockwise winding, negative for clockwise.
+
+```jldoctest
+julia> using Regions
+
+julia> area([(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)])
+1.0
+```
+"""
+function area(pts::PointList)
+    n = length(pts)
+    n < 3 && return 0.0
+    s = 0.0
+    for i in 1:n
+        j = i % n + 1
+        s += pts[i][1] * pts[j][2] - pts[j][1] * pts[i][2]
+    end
+    return s / 2
+end
+
+
+"""
+    simplify_radial_distance(pts::PointList, tolerance::Real, closed::Bool=false) -> PointList
+
+Simplify a polyline by removing points that lie within `tolerance` of the
+previous kept point (radial distance algorithm).
+
+If `closed` is true the polyline is treated as a closed polygon: the first
+point is appended at the end of the result so that the closing edge is
+included when summing edge lengths.
+
+```jldoctest
+julia> using Regions
+
+julia> pts = [(0.0,0.0),(0.5,0.0),(100.0,0.0),(100.0,100.0)];
+
+julia> length(simplify_radial_distance(pts, 1.0))
+3
+```
+"""
+function simplify_radial_distance(pts::PointList, tolerance::Real, closed::Bool=false)
+    n = length(pts)
+    t2 = Float64(tolerance)^2
+    n <= 2 && return copy(pts)
+    t2 == 0.0 && return closed ? vcat(pts, [pts[1]]) : copy(pts)
+
+    if closed
+        points = vcat(pts, [pts[1]])
+        m = length(points)
+        result = PointList([points[1]])
+        current = 1
+        for i in 2:m-1
+            (points[i][1]-points[current][1])^2 + (points[i][2]-points[current][2])^2 < t2 && continue
+            push!(result, points[i])
+            current = i
+        end
+        push!(result, points[end])
+        return result
+    else
+        result = PointList([pts[1]])
+        current = 1
+        for i in 2:n-1
+            (pts[i][1]-pts[current][1])^2 + (pts[i][2]-pts[current][2])^2 < t2 && continue
+            push!(result, pts[i])
+            current = i
+        end
+        push!(result, pts[end])
+        return result
+    end
+end
+
+
+# Sum edge lengths of a simplified closed polygon (first point appended at end).
+function _simplified_perimeter(simplified::PointList)
+    n = length(simplified)
+    n < 3 && return 0.0
+    p = 0.0
+    for i in 1:n-1
+        a, b = simplified[i], simplified[i+1]
+        p += sqrt((b[1]-a[1])^2 + (b[2]-a[2])^2)
+    end
+    return p
+end
+
+
+"""
+    perimeter(pts::PointList) -> Float64
+
+Return the perimeter of a closed polygon. Points are first simplified using
+[`simplify_radial_distance`](@ref) with tolerance 3 to reduce the effect of
+digitisation jaggies on oblique edges.
+
+```jldoctest
+julia> using Regions
+
+julia> pts = [(0.0,0.0),(100.0,0.0),(100.0,100.0),(0.0,100.0)];
+
+julia> perimeter(pts) ≈ 400.0
+true
+```
+"""
+perimeter(pts::PointList) = _simplified_perimeter(simplify_radial_distance(pts, 3.0, true))
+
+
+"""
+    simplified_perimeter(pts::PointList, tolerance::Real) -> Float64
+
+Return the perimeter of a closed polygon after simplifying with the given
+`tolerance` (see [`simplify_radial_distance`](@ref)).
+
+```jldoctest
+julia> using Regions
+
+julia> pts = [(0.0,0.0),(100.0,0.0),(100.0,100.0),(0.0,100.0)];
+
+julia> simplified_perimeter(pts, 3.0) ≈ 400.0
+true
+```
+"""
+function simplified_perimeter(pts::PointList, tolerance::Real)
+    @assert tolerance >= 0 "simplified_perimeter: tolerance must be ≥ 0"
+    _simplified_perimeter(simplify_radial_distance(pts, Float64(tolerance), true))
+end
+
+
+"""
+    point_at(pts::PointList, distance::Real) -> Tuple{Float64,Float64}
+
+Return the point at arc-length `distance` along the polyline.
+
+- `distance = 0`: first point.
+- `0 < distance < total_length`: interpolated point on the appropriate segment.
+- `distance < 0` or `distance > total_length`: extrapolated beyond the
+  respective end in the direction of the first or last edge.
+
+```jldoctest
+julia> using Regions
+
+julia> pts = [(0.0,0.0),(1.0,0.0),(1.0,1.0)];
+
+julia> point_at(pts, 1.5)
+(1.0, 0.5)
+```
+"""
+function point_at(pts::PointList, distance::Real)
+    @assert length(pts) >= 2 "point_at requires at least 2 points"
+    n = length(pts)
+    d = Float64(distance)
+
+    function _seg_pt(a, b, dist)
+        len = sqrt((b[1]-a[1])^2 + (b[2]-a[2])^2)
+        t = len > 1e-14 ? dist / len : 0.0
+        return (a[1] + t*(b[1]-a[1]), a[2] + t*(b[2]-a[2]))
+    end
+
+    d < 0 && return _seg_pt(pts[1], pts[2], d)
+
+    for i in 1:n-1
+        a, b = pts[i], pts[i+1]
+        len = sqrt((b[1]-a[1])^2 + (b[2]-a[2])^2)
+        d <= len && return _seg_pt(a, b, d)
+        d -= len
+    end
+
+    # Extrapolate past the end
+    a, b = pts[n-1], pts[n]
+    len = sqrt((b[1]-a[1])^2 + (b[2]-a[2])^2)
+    return _seg_pt(a, b, len + d)
+end

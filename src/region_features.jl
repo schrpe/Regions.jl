@@ -16,6 +16,7 @@ export perimeter, compactness
 export convex_hull, convex_area, convex_perimeter, convexity, perforation
 export feret_diameters
 export number_of_holes, area_of_holes
+export vectorized_boundaries, contour, to_point_list
 
 
 # Basic Geometry
@@ -597,4 +598,130 @@ julia> area_of_holes(r)
 """
 function area_of_holes(r::Region)
     return sum(area(h) for h in holes(r); init=0)
+end
+
+
+# Polygon List (Boundary Vectorisation)
+
+"""
+    vectorized_boundaries(r::Region) -> Vector{PointList}
+
+Convert a region to a list of closed boundary polygons. Outer boundaries wind
+clockwise; hole boundaries wind counter-clockwise (interior always to the right
+of travel direction). Coordinates use pixel-corner convention: a pixel at
+`(col, row)` has its corners at `(col±0.5, row±0.5)`.
+
+The result may contain collinear midpoints on straight edges; call
+`remove_collinear(poly)` on each polygon to simplify.
+
+```jldoctest
+julia> using Regions
+
+julia> polys = vectorized_boundaries(Region([Run(0, 0:0)]));
+
+julia> length(polys)
+1
+
+julia> length(polys[1])
+4
+```
+"""
+function vectorized_boundaries(r::Region)
+    @assert !r.complement "vectorized_boundaries: not defined for complement regions"
+    isempty(r.runs) && return Vector{PointList}()
+
+    col_map = Dict{Int,Vector{UnitRange{Int}}}()
+    for run in r.runs
+        push!(get!(col_map, run.column, UnitRange{Int}[]), run.rows)
+    end
+
+    # Sub-ranges of y_start:y_stop NOT covered by any run in `col`.
+    # Relies on col_map[col] being sorted by range start (guaranteed by run sort order).
+    function uncovered(y_start, y_stop, col)
+        result = UnitRange{Int}[]
+        cur = y_start
+        for r2 in get(col_map, col, UnitRange{Int}[])
+            r2.stop  < cur    && continue
+            r2.start > y_stop && break
+            r2.start > cur    && push!(result, cur:(r2.start - 1))
+            cur = r2.stop + 1
+            cur > y_stop && break
+        end
+        cur <= y_stop && push!(result, cur:y_stop)
+        return result
+    end
+
+    segments = Dict{Tuple{Int,Int},Tuple{Int,Int}}()
+    add(fx, fy, tx, ty) = (segments[(fx, fy)] = (tx, ty))
+
+    for run in r.runs
+        x  = run.column
+        ya = run.rows.start
+        yb = run.rows.stop
+
+        add(x,   ya,   x+1, ya)    # bottom edge →
+        add(x+1, yb+1, x,   yb+1) # top edge    ←
+
+        for sub in uncovered(ya, yb, x-1)          # left side ↑
+            add(x, sub.stop+1, x, sub.start)
+        end
+        for sub in uncovered(ya, yb, x+1)          # right side ↓
+            add(x+1, sub.start, x+1, sub.stop+1)
+        end
+    end
+
+    polygons = Vector{PointList}()
+    while !isempty(segments)
+        poly = PointList()
+        from_pt = first(keys(segments))
+        while haskey(segments, from_pt)
+            to_pt = segments[from_pt]
+            push!(poly, (Float64(from_pt[1]) - 0.5, Float64(from_pt[2]) - 0.5))
+            delete!(segments, from_pt)
+            from_pt = to_pt
+        end
+        push!(polygons, poly)
+    end
+    return polygons
+end
+
+
+"""
+    to_point_list(r::Region) -> PointList
+
+Flatten all boundary polygons of `r` into a single `PointList`.
+Equivalent to concatenating all polygons returned by [`vectorized_boundaries`](@ref).
+
+```jldoctest
+julia> using Regions
+
+julia> length(to_point_list(Region([Run(0, 0:0)])))
+4
+```
+"""
+function to_point_list(r::Region)
+    result = PointList()
+    for poly in vectorized_boundaries(r)
+        append!(result, poly)
+    end
+    return result
+end
+
+
+"""
+    contour(r::Region) -> PointList
+
+Return the first (outer) boundary polygon of `r` as a `PointList`.
+Equivalent to `vectorized_boundaries(r)[1]`.
+
+```jldoctest
+julia> using Regions
+
+julia> length(contour(Region([Run(0, 0:0)])))
+4
+```
+"""
+function contour(r::Region)
+    @assert !r.complement && !isempty(r.runs) "contour requires a non-empty, non-complement region"
+    return vectorized_boundaries(r)[1]
 end

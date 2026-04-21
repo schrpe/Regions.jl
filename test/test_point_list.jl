@@ -87,6 +87,53 @@
         @test c2.radius ≈ 2.0
     end
 
+    @testset "area" begin
+        # Unit square CCW → positive
+        @test area([(0.0,0.0),(1.0,0.0),(1.0,1.0),(0.0,1.0)]) ≈ 1.0
+        # Reversed (CW) → negative
+        @test area([(0.0,1.0),(1.0,1.0),(1.0,0.0),(0.0,0.0)]) ≈ -1.0
+        # Degenerate: fewer than 3 points
+        @test area([(0.0,0.0),(1.0,0.0)]) == 0.0
+    end
+
+    @testset "simplify_radial_distance" begin
+        # Middle point within tolerance is dropped
+        pts = [(0.0,0.0),(0.5,0.0),(100.0,0.0),(100.0,100.0)]
+        @test length(simplify_radial_distance(pts, 1.0)) == 3
+        # Zero tolerance: unchanged
+        @test simplify_radial_distance(pts, 0.0) == pts
+        # ≤ 2 points: unchanged
+        @test simplify_radial_distance([(0.0,0.0),(1.0,0.0)], 5.0) == [(0.0,0.0),(1.0,0.0)]
+        # Closed: result ends with first point
+        s = simplify_radial_distance([(0.0,0.0),(100.0,0.0),(100.0,100.0),(0.0,100.0)], 1.0, true)
+        @test s[end] == s[1]
+    end
+
+    @testset "perimeter / simplified_perimeter" begin
+        pts = [(0.0,0.0),(100.0,0.0),(100.0,100.0),(0.0,100.0)]
+        @test perimeter(pts) ≈ 400.0
+        @test simplified_perimeter(pts, 3.0) ≈ 400.0
+        @test simplified_perimeter(pts, 0.0) ≈ 400.0
+    end
+
+    @testset "point_at" begin
+        pts = [(0.0,0.0),(1.0,0.0),(1.0,1.0)]
+        # On first segment
+        @test point_at(pts, 0.5) == (0.5, 0.0)
+        # On second segment
+        @test point_at(pts, 1.5) == (1.0, 0.5)
+        # At start
+        @test point_at(pts, 0.0) == (0.0, 0.0)
+        # At junction
+        @test point_at(pts, 1.0) == (1.0, 0.0)
+        # Extrapolate past end
+        pa = point_at(pts, 2.5)
+        @test pa[1] ≈ 1.0 && pa[2] ≈ 1.5
+        # Extrapolate before start
+        pb = point_at(pts, -0.5)
+        @test pb == (-0.5, 0.0)
+    end
+
     @testset "translate" begin
         t = translate(sq, 3.0, 4.0)
         @test t == [(3.0,4.0),(4.0,4.0),(4.0,5.0),(3.0,5.0)]

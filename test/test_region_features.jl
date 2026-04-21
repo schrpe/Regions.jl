@@ -150,7 +150,47 @@
         @test mx4 ≈ 4.0 * sqrt(2) atol=0.01
     end
 
-    # ── Phase E: Hole Features ────────────────────────────────────────────────
+    # ── Phase E: Boundary Polygons ───────────────────────────────────────────
+
+    @testset "vectorized_boundaries and contour" begin
+        # Single pixel → one polygon with 4 corners
+        polys = vectorized_boundaries(Region([Run(0, 0:0)]))
+        @test length(polys) == 1
+        @test length(polys[1]) == 4
+        # All four half-integer corners present
+        pts = Set(polys[1])
+        @test (-0.5,-0.5) in pts
+        @test ( 0.5,-0.5) in pts
+        @test ( 0.5, 0.5) in pts
+        @test (-0.5, 0.5) in pts
+
+        # 2×2 square → one polygon, 6 points (collinear midpoints on each long side)
+        sq = Region([Run(0, 0:1), Run(1, 0:1)])
+        polys2 = vectorized_boundaries(sq)
+        @test length(polys2) == 1
+        @test length(polys2[1]) == 6  # 4 corners + 2 collinear midpoints
+
+        # Frame with hole → two polygons
+        frame = difference(region_from_box(-2, 2, 2, -2), region_from_box(-1, 1, 1, -1))
+        pf = vectorized_boundaries(frame)
+        @test length(pf) == 2
+
+        # Empty region → no polygons
+        @test isempty(vectorized_boundaries(Region(Run[])))
+
+        # contour returns first boundary
+        @test contour(Region([Run(0, 0:0)])) == vectorized_boundaries(Region([Run(0, 0:0)]))[1]
+    end
+
+    @testset "to_point_list" begin
+        # Single pixel → 4 points
+        @test length(to_point_list(Region([Run(0, 0:0)]))) == 4
+        # to_point_list is the concatenation of vectorized_boundaries
+        r = Region([Run(c, 0:2) for c in 0:2])
+        @test length(to_point_list(r)) == sum(length(p) for p in vectorized_boundaries(r))
+    end
+
+    # ── Phase F: Hole Features ────────────────────────────────────────────────
 
     @testset "number_of_holes and area_of_holes" begin
         # Solid square: no holes
