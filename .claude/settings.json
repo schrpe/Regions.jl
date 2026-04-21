@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(julia --project=. --load docs/generate_gear_images.jl)"
+      "Bash(julia --project=. --load docs/generate_gear_images.jl)",
+      "Bash(julia --project=. --load docs/generate_gear_images.jl -e ' *)",
+      "Bash(julia --project=. docs/generate_morph_images.jl)",
+      "Bash(julia --project=. make.jl)"
     ]
   }
 }
