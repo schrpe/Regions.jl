@@ -685,3 +685,61 @@ end # "binarize"
     @test cs[1].complement == false
 
 end # "components"
+
+@testset "region_from_point_list" begin
+    r = region_from_point_list([(0,0),(1,0),(1,1)])
+    @test area(r) == 3
+    @test contains(r, 0, 0) && contains(r, 1, 0) && contains(r, 1, 1)
+    # Duplicate points merged
+    r2 = region_from_point_list([(2,3),(2,3)])
+    @test area(r2) == 1
+    # Empty list
+    @test isempty(region_from_point_list(Tuple{Int,Int}[]))
+end
+
+@testset "region_from_point" begin
+    r = region_from_point(1.4, 2.6)
+    @test area(r) == 1
+    @test contains(r, 1, 3)
+    # Integer input
+    r2 = region_from_point(5, 7)
+    @test contains(r2, 5, 7)
+end
+
+@testset "region_from_ellipse" begin
+    # Axis-aligned ellipse rx=2, ry=1 at origin: 4 pixels (half-open convention)
+    r = region_from_ellipse(0.0, 0.0, 2.0, 1.0, 0.0)
+    @test area(r) == 4
+    @test contains(r, 0, 0)
+    # Large ellipse contains its center
+    rl = region_from_ellipse(10, 10, 5, 3, 0.0)
+    @test contains(rl, 10, 10)
+    # NamedTuple overload (round-trip with equivalent_ellipse)
+    r3x3 = Region([Run(c, -1:1) for c in -1:1])
+    e = equivalent_ellipse(r3x3)
+    re = region_from_ellipse(e)
+    @test area(re) > 0
+end
+
+@testset "region_from_ring" begin
+    # Ring area = outer area − inner area (difference of two circles)
+    r = region_from_ring(0, 0, 5, 3)
+    @test area(r) == area(region_from_circle(0, 0, 5)) - area(region_from_circle(0, 0, 3))
+    # inner_radius = 0 removes only the center pixel
+    @test area(region_from_ring(0, 0, 4, 0)) == area(region_from_circle(0, 0, 4)) - 1
+end
+
+@testset "region_from_line_segment" begin
+    # Horizontal segment: 4 pixels
+    r = region_from_line_segment(0.0, 0.0, 3.0, 0.0)
+    @test area(r) == 4
+    # Vertical segment: 4 pixels
+    r2 = region_from_line_segment(0.0, 0.0, 0.0, 3.0)
+    @test area(r2) == 4
+    # Single point
+    r3 = region_from_line_segment(2.0, 2.0, 2.0, 2.0)
+    @test area(r3) == 1
+    # Diagonal: 8-connected, pixel count = max(dx,dy)+1
+    r4 = region_from_line_segment(0.0, 0.0, 3.0, 3.0)
+    @test area(r4) == 4
+end

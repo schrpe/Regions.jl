@@ -13,6 +13,11 @@ export union, intersection, difference
 export region_from_box
 export region_from_circle
 export region_from_polygon
+export region_from_point_list
+export region_from_point
+export region_from_line_segment
+export region_from_ellipse
+export region_from_ring
 export region_to_image
 
 """
@@ -701,6 +706,181 @@ function region_from_polygon(vertices::Vector{Tuple{Int,Int}})
     end
 
     return region
+end
+
+"""
+    region_from_point_list(points::Vector{Tuple{Int,Int}})
+
+Create a region from a list of integer pixel coordinates `(column, row)`.
+Each point becomes one pixel; duplicate points are merged.
+
+```jldoctest
+julia> using Regions
+
+julia> r = region_from_point_list([(0,0),(1,0),(1,1)]);
+
+julia> area(r)
+3
+
+julia> contains(r, 1, 1)
+true
+```
+"""
+function region_from_point_list(points::Vector{Tuple{Int,Int}})
+    isempty(points) && return Region(Run[])
+    runs = [Run(x, y:y) for (x, y) in points]
+    sort!(runs)
+    _pack!(runs)
+    return Region(runs)
+end
+
+"""
+    region_from_point(x::Real, y::Real)
+
+Create a single-pixel region at the nearest integer coordinate to `(x, y)`.
+Rounding uses `trunc(Int, v + 0.5)`, matching C++ `(int)(v + 0.5)`.
+
+```jldoctest
+julia> using Regions
+
+julia> r = region_from_point(1.4, 2.6);
+
+julia> area(r)
+1
+
+julia> contains(r, 1, 3)
+true
+```
+"""
+function region_from_point(x::Real, y::Real)
+    ix = trunc(Int, Float64(x) + 0.5)
+    iy = trunc(Int, Float64(y) + 0.5)
+    return Region([Run(ix, iy:iy)])
+end
+
+"""
+    region_from_line_segment(x0::Real, y0::Real, x1::Real, y1::Real)
+
+Create a region containing all pixels on the 8-connected Bresenham line
+from `(x0, y0)` to `(x1, y1)`. Endpoints are rounded to the nearest integer.
+
+```jldoctest
+julia> using Regions
+
+julia> area(region_from_line_segment(0.0, 0.0, 3.0, 0.0))
+4
+
+julia> area(region_from_line_segment(0.0, 0.0, 0.0, 3.0))
+4
+
+julia> area(region_from_line_segment(2.0, 2.0, 2.0, 2.0))
+1
+```
+"""
+function region_from_line_segment(x0::Real, y0::Real, x1::Real, y1::Real)
+    ix0 = round(Int, x0); iy0 = round(Int, y0)
+    ix1 = round(Int, x1); iy1 = round(Int, y1)
+    runs = Run[]
+    dx = abs(ix1 - ix0)
+    dy = abs(iy1 - iy0)
+    sx = sign(ix1 - ix0)
+    sy = sign(iy1 - iy0)
+    err = dx - dy
+    x, y = ix0, iy0
+    while true
+        push!(runs, Run(x, y:y))
+        x == ix1 && y == iy1 && break
+        e2 = 2 * err
+        if e2 > -dy
+            err -= dy
+            x += sx
+        end
+        if e2 < dx
+            err += dx
+            y += sy
+        end
+    end
+    sort!(runs)
+    _pack!(runs)
+    return Region(runs)
+end
+
+"""
+    region_from_ellipse(cx, cy, rx, ry, phi)
+    region_from_ellipse(e::NamedTuple)
+
+Create a filled region from an ellipse with center `(cx, cy)`, semi-axes `rx` (along `phi`)
+and `ry` (perpendicular), and rotation angle `phi` in radians.
+
+The second form accepts a named tuple `(center, semi_axes, angle)` as returned by
+[`equivalent_ellipse`](@ref), enabling round-trip conversion.
+
+```jldoctest
+julia> using Regions
+
+julia> r = region_from_ellipse(0.0, 0.0, 2.0, 1.0, 0.0);
+
+julia> area(r)
+4
+
+julia> contains(r, 0, 0)
+true
+```
+"""
+function region_from_ellipse(cx::Real, cy::Real, rx::Real, ry::Real, phi::Real)
+    cx, cy, rx, ry, phi = Float64.((cx, cy, rx, ry, phi))
+
+    aprime = rx * cos(phi)
+    bprime = -ry * sin(phi)
+    a      = rx * sin(phi)
+    b      = -ry * cos(phi)
+
+    rprime    = sqrt(aprime^2 + bprime^2)
+    alphaprime = atan(bprime, aprime)
+
+    x_left  = ceil(Int, cx - rprime)
+    x_right = ceil(Int, cx + rprime)
+
+    region = Region(Run[])
+    for x in x_left:x_right-1
+        cr = (x - cx) / rprime
+        abs(cr) >= 1.0 && continue
+
+        rho    = acos(cr)
+        theta1 = alphaprime - rho
+        theta2 = alphaprime + rho
+
+        y1f = cy + a * cos(theta1) - b * sin(theta1)
+        y2f = cy + a * cos(theta2) - b * sin(theta2)
+        y1, y2 = ceil(Int, min(y1f, y2f)), ceil(Int, max(y1f, y2f))
+
+        y2 - y1 > 0 && push!(region.runs, Run(x, y1:y2-1))
+    end
+    return region
+end
+
+function region_from_ellipse(e::NamedTuple)
+    region_from_ellipse(e.center[1], e.center[2], e.semi_axes[1], e.semi_axes[2], e.angle)
+end
+
+"""
+    region_from_ring(cx::Integer, cy::Integer, outer_radius::Integer, inner_radius::Integer)
+
+Create a ring-shaped region: the set difference of two concentric circles with the same
+center `(cx, cy)`. `outer_radius` must be ≥ `inner_radius` ≥ 0.
+
+```jldoctest
+julia> using Regions
+
+julia> r = region_from_ring(0, 0, 5, 3);
+
+julia> area(r) == area(region_from_circle(0, 0, 5)) - area(region_from_circle(0, 0, 3))
+true
+```
+"""
+function region_from_ring(cx::Integer, cy::Integer, outer_radius::Integer, inner_radius::Integer)
+    @assert outer_radius >= inner_radius >= 0 "outer_radius must be ≥ inner_radius ≥ 0"
+    return difference(region_from_circle(cx, cy, outer_radius), region_from_circle(cx, cy, inner_radius))
 end
 
 """
