@@ -378,35 +378,6 @@ function _run_corners(r::Region)
     return pts
 end
 
-# Andrew's monotone chain — returns hull in CCW order.
-function _monotone_chain(pts::Vector{Tuple{Float64,Float64}})
-    n = length(pts)
-    n <= 1 && return copy(pts)
-    sorted = sort(pts)   # lexicographic (x first, then y)
-    hull = Vector{Tuple{Float64,Float64}}()
-    sizehint!(hull, 2n)
-
-    _cross(o, a, b) = (a[1]-o[1])*(b[2]-o[2]) - (a[2]-o[2])*(b[1]-o[1])
-
-    # lower hull
-    for p in sorted
-        while length(hull) >= 2 && _cross(hull[end-1], hull[end], p) <= 0
-            pop!(hull)
-        end
-        push!(hull, p)
-    end
-    # upper hull
-    lower_len = length(hull) + 1
-    for p in reverse(sorted)
-        while length(hull) >= lower_len && _cross(hull[end-1], hull[end], p) <= 0
-            pop!(hull)
-        end
-        push!(hull, p)
-    end
-    pop!(hull)   # last point equals first
-    return hull
-end
-
 
 """
     convex_hull(r::Region) -> Vector{Tuple{Float64,Float64}}

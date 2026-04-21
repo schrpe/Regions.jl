@@ -28,6 +28,7 @@ include("run.jl")
 include("region.jl")
 include("region_morphology.jl")
 include("region_vector.jl")
+include("point_list.jl")
 include("region_features.jl")
 
 # Benchmarked on a 16-core / 4-thread machine across dense and sparse Float32 images:
