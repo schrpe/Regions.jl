@@ -1,6 +1,6 @@
 name = "Regions"
 uuid = "4e3eb3bd-530d-473f-987b-017f501eadde"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["schrpe"]
 
 [deps]
