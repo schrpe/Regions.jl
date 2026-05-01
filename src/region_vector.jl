@@ -207,8 +207,7 @@ end
     Morphological operations on Vector{Region}
 
     Each function applies the corresponding scalar operation to every region
-    in the vector and collects the non-empty results.  This mirrors the
-    C++ ngi::region_algorithm.h free functions that loop over a region_list.
+    in the vector and collects the non-empty results.
 
 ------------------------------------------------------------------------ =#
 

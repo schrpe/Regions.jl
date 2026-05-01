@@ -191,7 +191,7 @@ function components(region::Region, dx::Unsigned=unsigned(1), dy::Unsigned=unsig
 
     run_index = 1
 
-    ## see ngi::chord::are_chords_close; this is required for 4-connectivity
+    ## ensure dx >= 1; this is required for 4-connectivity
     dx = max(1, dx)
     for run in region.runs
         next_run_index = run_index + 1
