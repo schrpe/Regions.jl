@@ -159,16 +159,21 @@ end
 """
     regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
 
-Converts a vector of regions to an image. The function determines the bounds of the
-regions and then renders the regions into the image.
+Render a vector of regions to a single 2D `Array` sized to the combined bounding box. Each
+region is drawn in turn, taking its color from `colors`; when there are more regions than
+colors, the color list is cycled. Where two regions overlap, the previously drawn pixel is
+alpha-composited under the new pixel — pass colors with `< 1` alpha (e.g. `RGBA`) to make
+overlaps visible.
 
-The background of the image is filled with zeroes, the region pixels are
-colored with the passed in colors. Colors are cycled when there are more regions than colors.
+This is the natural rendering for the output of [`components`](@ref), where each connected
+blob can be tinted differently.
 
-Some examples of colors that you can pass:
-[Gray(0.5)] : mid gray value applied to all regions
-[RGB(1, 0, 0), RGB(0, 1, 0), RGB(0, 0, 1)] : cycle through red, green and blue
-[RGBA(0, 0.5, 0, 0.5), RGBA(0.5, 0, 0, 0.5)] : half transparent mid green and mid red values
+Some examples of color lists you can pass:
+- `[Gray(0.5)]` — flat mid gray for every region
+- `[RGB(1, 0, 0), RGB(0, 1, 0), RGB(0, 0, 1)]` — cycle red/green/blue per region
+- `[RGBA(0, 0.5, 0, 0.5), RGBA(0.5, 0, 0, 0.5)]` — half-transparent green and red
+
+Compare with [`region_to_image`](@ref), which renders a single `Region` with a single color.
 """
 function regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
     (l, t, r, b) = bounds(regions)
@@ -192,10 +197,12 @@ function regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
 end
 
 """
-    Base.show(io, mime::MIME"image/png", regions::Region[])
+    Base.show(io, mime::MIME"image/png", regions::Vector{Region})
 
-Shows a rich graphical display of a vector of regions. The colors cycle through
-half transparent blue, green, red, cyan, magenta and yellow colors.
+`MIME"image/png"` show method for a `Vector{Region}`. Renders the components as a PNG via
+[`regions_to_image`](@ref), cycling through six half-transparent colors (blue, green, red,
+cyan, magenta, yellow) so that adjacent components are visually distinct. This is what
+produces inline graphics for the result of [`components`](@ref) in notebook environments.
 """
 function Base.show(io::IO, mime::MIME"image/png", regions::Vector{Region})
     colors = RGBA[RGBA(0,0,1,0.5), RGBA(0,1,0,0.5), RGBA(1,0,0,0.5), RGBA(0,1,1,0.5), RGBA(1,0,1,0.5), RGBA(1,1,0,0.5)]

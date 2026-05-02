@@ -126,13 +126,17 @@ false
 istouching(x::UnitRange{Int}, y::UnitRange{Int}) = (x < y) ? (x.stop+1 ≥ y.start) : (y.stop+1 ≥ x.start)
 
 """
-    isclose(::UnitRange{Int}x, ::UnitRange{Int}y, distance::Integer)
+    isclose(x::UnitRange{Int}, y::UnitRange{Int}, distance::Integer)
 
-Test if two ranges are close.
+Test whether the gap between `x` and `y` is at most `distance` integers wide. Equivalently,
+`isclose(x, y, d)` returns `true` iff growing the smaller range by `d` units toward the
+other range makes them overlap.
 
-If distance == 0 this is the same as isoverlapping().
-If distance == 1 this is the same as istouching().
-If distance > 1 this is testing of closeness.
+The `distance` parameter generalizes the related range predicates:
+
+- `distance == 0` is equivalent to [`isoverlapping`](@ref) — the ranges share at least one integer.
+- `distance == 1` is equivalent to [`istouching`](@ref) — the ranges overlap or are immediately adjacent.
+- `distance > 1` permits a gap of up to `distance - 1` integers between them.
 
 ```jldoctest
 julia> using Regions

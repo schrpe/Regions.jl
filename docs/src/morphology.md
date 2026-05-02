@@ -18,6 +18,22 @@ set the spatial scale at which features are grown, shrunk, or detected.
 | Disk | `region_from_circle(0, 0, r)` | Isotropic — treats all directions equally |
 | Square | `region_from_box(-r, r, r, -r)` | Axis-aligned — sharper corners, faster |
 
+## Mathematical foundation
+
+All operations on this page are built from two primitives — the **Minkowski sum** and the
+**Minkowski difference** of two sets ``A`` and ``B``:
+
+```math
+A \oplus B = \{ a + b \mid a \in A,\, b \in B \},\qquad
+A \ominus B = \{ c \mid B + c \subseteq A \}.
+```
+
+`dilation(A, B)` is `A ⊕ B` and `erosion(A, B)` is `A ⊖ B`; opening, closing, gradients,
+and boundaries are all defined as compositions of these two. The internal helpers
+`Regions._minkowski_addition` and `Regions._minkowski_subtraction` implement the primitives
+on `Region`s. Because the formulas treat `A` and `B` symmetrically, the structuring element
+can be any region — disks, boxes, polygons, line segments, even point clouds.
+
 ## Erosion
 
 `erosion(a, se)` shrinks `a`. A pixel is kept only when the SE, placed at that pixel, fits
@@ -61,6 +77,14 @@ true
 ```
 
 Dilation is the dual of erosion: `dilation(a, se) == invert(erosion(invert(a), se))`.
+
+!!! tip "Chaining erosions and dilations"
+    For convex SEs centred on the origin, two successive erosions with a 3×3 box give the
+    same result as one erosion with a 5×5 box, because erosion satisfies
+    ``(A \ominus B) \ominus B = A \ominus (B \oplus B)``. The same identity holds for
+    dilation. This lets you build a large effective SE from cheap repeated applications of
+    a small one — handy when you want a tunable amount of erosion without re-creating SEs.
+    The identity does **not** hold for non-convex or off-centre SEs in general.
 
 ## Opening
 

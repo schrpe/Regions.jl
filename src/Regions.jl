@@ -132,9 +132,30 @@ end
 """
     components(region::Region, dx::Unsigned=1, dy::Unsigned=1)
 
-This function splits a region into connected component objects that are returned as a vector of regions.
+Split `region` into its connected components and return them as a `Vector{Region}` — one
+element per blob.
 
-The dx and dy parameters specify the size of gaps that are still considered to be the same object.
+Two runs are considered part of the same component when their column distance is at most
+`dx` and their row gap is at most `dy`. The defaults `dx = dy = 1` give standard 8-connected
+labelling; larger values intentionally bridge small gaps between nearby objects (useful for
+joining slightly-fragmented blobs into a single component before measurement).
+
+Because the algorithm walks the run list rather than the pixel grid, it scales as
+`O(n_runs)` — independent of image area. On sparse industrial images this is typically
+orders of magnitude faster than pixel-based connected-component labelling.
+
+```jldoctest
+julia> using Regions
+
+julia> b1 = region_from_circle(-20, 0, 5);
+
+julia> b2 = region_from_circle(  0, 0, 5);
+
+julia> b3 = region_from_circle( 20, 0, 5);
+
+julia> length(components(union(union(b1, b2), b3)))
+3
+```
 """
 function components(region::Region, dx::Unsigned=unsigned(1), dy::Unsigned=unsigned(1))
 

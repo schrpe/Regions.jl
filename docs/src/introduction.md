@@ -11,7 +11,7 @@ A region can be seen as a set of discrete coordinates in the cartesian plane. In
 
 A region is represented with a sorted list of vertical runs. Runs themselves are represented with a column coordinate and a range of vertical row coordinates.
 
-**Coordinate convention.** The horizontal axis is called *column* (x) and increases to the right. The vertical axis is called *row* (y) and increases downward, following Julia's matrix convention (`img[row, column]`). Consequently, `bottom(r)` returns the minimum row value — the row closest to the top of an image — and `top(r)` returns the maximum row value.
+**Coordinate convention.** Coordinates are written `(column, row)` and the package follows the *mathematical* convention: column (x) increases to the right and row (y) increases upward. As a result `top(r)` returns the maximum row value and `bottom(r)` returns the minimum row value, and the function names match the visual meaning. Note that this is the opposite of Julia's image-display convention, where the first index of `img[i, j]` is interpreted as a downward-growing row; if you mix Regions with image arrays directly, remember that what the package calls a larger row sits *above* a smaller one.
 
 ![Region and runs](region_and_runs.svg)
 
@@ -324,3 +324,33 @@ reg = binarize(img, px -> px < 0.9)
 The grayscale image of the gear is binarized, i.e. all pixels below 90 % brightness are contained in the region.
 
 ![Segmented gear](threshold.png)
+
+## Design notes
+
+### Why column-major run-length encoding?
+
+Regions are stored as runs of consecutive *rows* within a single *column*, rather than the
+more common row-based RLE found in many image-processing libraries. The choice is made for
+three concrete reasons that all stem from Julia's column-major array layout:
+
+1. **Cache locality.** Pixels in the same column lie in consecutive memory under
+   `img[row, column]`, so iterating over a run touches only sequential addresses.
+2. **SIMD-friendly inner loops.** `binarize` and the per-region image operations that use a
+   region as a domain both walk a column at a time, which the compiler can vectorise
+   without further help.
+3. **Embarrassingly-parallel segmentation.** Because each column is processed
+   independently, `binarize` distributes columns across threads when the image has at least
+   1024 columns (and Julia is started with `--threads`). A row-based RLE would couple
+   adjacent rows during merging and would not parallelise as cleanly.
+
+### Cost model
+
+Once a region is built, the cost of subsequent operations is governed by the **number of
+runs**, not by the image area. Connected components, set operations, and morphology are all
+`O(n_runs)` (morphology with a structuring element of `n_se` runs is `O(n_runs · n_se)`).
+On sparse industrial images, where `n_runs` is typically a small fraction of `W · H`, this
+is orders of magnitude faster than equivalent operations on a pixel array. The one-time
+cost of `binarize` is `O(W · H)` and is amortised after one or two operations.
+
+See the [Comparison](comparison.md) page for measured speedups versus pixel-array
+alternatives and for guidance on when each representation is preferable.

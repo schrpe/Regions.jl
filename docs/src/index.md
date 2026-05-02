@@ -25,6 +25,6 @@ Regions can be used for various purposes in machine vision and image processing.
 ## Contents
 
 ```@contents
-Pages = ["introduction.md", "set_operations.md", "morphology.md", "blob_analysis.md", "reference.md"]
+Pages = ["introduction.md", "set_operations.md", "morphology.md", "blob_analysis.md", "region_as_domain.md", "comparison.md", "reference.md"]
 Depth = 2
 ```

@@ -19,6 +19,8 @@ makedocs(;
         "Set Operations"          => "set_operations.md",
         "Morphological Operations" => "morphology.md",
         "Blob Analysis"           => "blob_analysis.md",
+        "Region as Domain"        => "region_as_domain.md",
+        "Comparison"              => "comparison.md",
         "Reference"               => "reference.md",
     ],
 )

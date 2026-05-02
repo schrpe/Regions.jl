@@ -23,9 +23,28 @@ export region_to_image
 """
     Region
 
-A region is a discrete set of coordinates in two-dimensional euclidean space.
+A region is a discrete set of coordinates in two-dimensional euclidean space, represented as
+a sorted vector of `Run`s plus a boolean `complement` flag.
 
-A region consists of zero or more runs, which are sorted in ascending order.
+# Sort invariant
+
+The runs are sorted first by `column`, then by `rows.start`. Many functions in the package
+rely on this invariant — out-of-order runs will silently produce wrong results. If you
+mutate `r.runs` directly, restore the order with `sort!(r.runs)` before passing the region
+to other functions.
+
+# The `complement` flag
+
+When `complement == false` (the usual case), the runs enumerate the pixels *contained* in
+the region. When `complement == true`, the runs enumerate the pixels *excluded* from an
+otherwise infinite plane — i.e. the region is the set-theoretic complement of those runs.
+This flag is what allows the package to represent infinite regions (such as the result of
+inverting a finite region) without storing infinite memory, and it is what enables `union`,
+`intersection`, and `difference` to handle complement operands correctly via De Morgan's
+laws. Use [`complement`](@ref) to construct a complement region rather than setting the
+field directly.
+
+# Examples
 
 ```jldoctest reg
 julia> using Regions
@@ -260,9 +279,16 @@ contains(r::Region, a::Vector{Int}) = contains(r, a[1], a[2])
 """
     left(x::Region)
 
-Calculates the leftmost region coordinate.
+Returns the smallest column coordinate of `x` — its leftmost column.
 
-This function works for non-complement and non-empty regions only.
+Only valid for non-complement, non-empty regions.
+
+```jldoctest
+julia> using Regions
+
+julia> left(region_from_box(2, 5, 7, 1))
+2
+```
 """
 function left(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
@@ -273,9 +299,17 @@ end
 """
     top(x::Region)
 
-Calculates the topmost region coordinate.
+Returns the largest row coordinate of `x`. Under the mathematical y-axis convention this is
+the topmost row of the region.
 
-This function works for non-complement and non-empty regions only.
+Only valid for non-complement, non-empty regions.
+
+```jldoctest
+julia> using Regions
+
+julia> top(region_from_box(2, 5, 7, 1))
+5
+```
 """
 function top(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
@@ -286,9 +320,16 @@ end
 """
     right(x::Region)
 
-Calculates the rightmost region coordinate.
+Returns the largest column coordinate of `x` — its rightmost column.
 
-This function works for non-complement and non-empty regions only.
+Only valid for non-complement, non-empty regions.
+
+```jldoctest
+julia> using Regions
+
+julia> right(region_from_box(2, 5, 7, 1))
+7
+```
 """
 function right(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
@@ -299,9 +340,17 @@ end
 """
     bottom(x::Region)
 
-Calculates the bottommost region coordinate.
+Returns the smallest row coordinate of `x`. Under the mathematical y-axis convention this is
+the bottommost row of the region.
 
-This function works for non-complement and non-empty regions only.
+Only valid for non-complement, non-empty regions.
+
+```jldoctest
+julia> using Regions
+
+julia> bottom(region_from_box(2, 5, 7, 1))
+1
+```
 """
 function bottom(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
@@ -312,10 +361,18 @@ end
 """
     bounds(x::Region)
 
-Calculates the left, top, right and bottom region coordinate and returns them
-as a tuple.
+Returns the bounding box of `x` as `(left, top, right, bottom)` — equivalently
+`(min column, max row, max column, min row)`. Note that `top > bottom` under the mathematical
+y-axis convention used throughout the package.
 
-This function works for non-complement and non-empty regions only.
+Only valid for non-complement, non-empty regions.
+
+```jldoctest
+julia> using Regions
+
+julia> bounds(region_from_box(2, 5, 7, 1))
+(2, 5, 7, 1)
+```
 """
 function bounds(region::Region)
     @assert !region.complement "cannot calculate for infinite (complement) regions"
@@ -429,8 +486,23 @@ end
 """
     union(a::Region, b::Region)
 
-Calculates the union of two regions. This function supports complement regions and uses 
-DeMorgan's rules to eliminate the complement.    
+Returns the set-theoretic union of `a` and `b` — every pixel contained in `a`, in `b`, or in
+both. The operation is commutative and associative.
+
+Complement regions are handled transparently: any combination of regular and complement
+operands is mapped via De Morgan's laws to operations on regular runs, and the result is
+returned with the appropriate `complement` flag.
+
+```jldoctest
+julia> using Regions
+
+julia> a = region_from_box(0, 3, 4, 0);
+
+julia> b = region_from_box(3, 5, 7, 2);
+
+julia> area(union(a, b))
+36
+```
 """
 function union(a::Region, b::Region)
     if a.complement && b.complement
@@ -493,8 +565,22 @@ end
 """
     intersection(a::Region, b::Region)
 
-Calculates the intersection of two regions. This function supports complement regions and uses 
-DeMorgan's rules to eliminate the complement.    
+Returns the set-theoretic intersection of `a` and `b` — only the pixels contained in both.
+Useful for masking: intersect a segmented region with a geometric region of interest (a box,
+circle, polygon, …) to restrict subsequent analysis to that area.
+
+Complement regions are handled transparently via De Morgan's laws.
+
+```jldoctest
+julia> using Regions
+
+julia> a = region_from_box(0, 3, 4, 0);
+
+julia> b = region_from_box(3, 5, 7, 2);
+
+julia> area(intersection(a, b))
+4
+```
 """
 function intersection(a::Region, b::Region)
     if a.complement && b.complement
@@ -579,8 +665,25 @@ end
 """
     difference(a::Region, b::Region)
 
-Calculates the difference of two regions. This function supports complement regions and uses
-DeMorgan's rules to eliminate the complement.
+Returns the set-theoretic difference `a \\ b` — every pixel contained in `a` but *not* in `b`.
+The operation is asymmetric: `difference(a, b)` and `difference(b, a)` are generally
+different regions.
+
+Complement regions are handled transparently via De Morgan's laws.
+
+```jldoctest
+julia> using Regions
+
+julia> a = region_from_box(0, 3, 4, 0);
+
+julia> b = region_from_box(3, 5, 7, 2);
+
+julia> area(difference(a, b))
+16
+
+julia> area(difference(b, a))
+16
+```
 """
 function difference(a::Region, b::Region)
     if a.complement && b.complement
@@ -597,7 +700,22 @@ end
 """
     region_from_box(left::Integer, top::Integer, right::Integer, bottom::Integer)
 
-Create a region given box coordinates. The region consists of all coordinates within the box.
+Create a filled rectangular region from its bounding-box coordinates. The argument order is
+`left, top, right, bottom`, and the package's mathematical y-axis convention requires
+`top > bottom` and `right > left`. The result contains one vertical run per column, each
+spanning rows `bottom:top`.
+
+```jldoctest
+julia> using Regions
+
+julia> r = region_from_box(1, 4, 3, 1);
+
+julia> bounds(r)
+(1, 4, 3, 1)
+
+julia> area(r)
+12
+```
 """
 function region_from_box(left::Integer, top::Integer, right::Integer, bottom::Integer)
     @assert bottom < top "bottom must be smaller than top"
@@ -887,16 +1005,20 @@ end
 """
     region_to_image(r::Region, color=Gray(true))
 
-Converts a region to an image. The function determines the bounds of the
-region and then renders the region into the image.
+Render a region to a 2D `Array` whose element type matches `color`. The image is sized to
+the region's bounding box: `(top - bottom + 1, right - left + 1)` rows by columns. Pixels
+outside the region are zero (e.g. `Gray(0)`, `RGB(0,0,0)`, or `RGBA(0,0,0,0)`); pixels
+inside are set to `color`. The element type of the returned array is `typeof(color)`, so
+calling with `Gray`, `RGB`, or `RGBA` selects the output format.
 
-The background of the image is filled with zeroes, the region pixels are
-colored with the passed in color.
+Some examples of colors you can pass:
+- `Gray(0.5)` — mid gray
+- `RGB(1, 0, 0)` — bright red
+- `RGBA(0, 0.5, 0, 0.5)` — half-transparent mid green
 
-Some examples of colors that you can pass:
-Gray(0.5) : mid gray value
-RGB(1, 0, 0) : brightest red value
-RGBA(0, 0.5, 0, 0.5) : half transparent mid green value
+Use this when you need a raster image (for saving, displaying, or interop with image
+libraries). For inline display in REPL/notebook contexts the `Base.show` method registered
+for `MIME"image/png"` calls this function automatically with a half-transparent blue color.
 """
 function region_to_image(region::Region, color=Gray(true))
     (l, t, r, b) = bounds(region)
@@ -912,8 +1034,11 @@ end
 """
     Base.show(io, mime::MIME"image/png", r::Region)
 
-Shows a rich graphical display of a region. The region is displayed in a half 
-transparent blue color.
+`MIME"image/png"` show method for a `Region`. Renders the region as a PNG via
+[`region_to_image`](@ref) with a half-transparent blue color (`RGBA(0, 0, 1, 0.5)`). This is
+what produces an inline graphic when a region is the value of the last expression in
+notebook environments such as Pluto, Jupyter, or VS Code, or when a region is passed to
+`display`. Empty regions render to nothing.
 """
 function Base.show(io::IO, mime::MIME"image/png", region::Region)
     if !isempty(region)
