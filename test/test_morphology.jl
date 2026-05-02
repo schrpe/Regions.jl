@@ -52,8 +52,8 @@ end # "Run _minkowski_subtraction"
 @testset "_minkowski_addition(Region)" begin
 
     pixel = Region([Run(0, 0:0)])
-    box3  = region_from_box(-1, 1, 1, -1)
-    box5  = region_from_box(-2, 2, 2, -2)
+    box3  = region_from_box(-1, -1, 1, 1)
+    box5  = region_from_box(-2, -2, 2, 2)
 
     # Identity: A ⊕ {origin} = A
     @test Regions._minkowski_addition(pixel, Region([Run(0, 0:0)])) == pixel
@@ -67,8 +67,8 @@ end # "Run _minkowski_subtraction"
     @test Regions._minkowski_addition(box3, box3) == box5
 
     # Commutativity
-    a = region_from_box(0, 2, 2, 0)
-    b = region_from_box(-1, 1, 0, -1)
+    a = region_from_box(0, 0, 2, 2)
+    b = region_from_box(-1, -1, 0, 1)
     @test Regions._minkowski_addition(a, b) == Regions._minkowski_addition(b, a)
 
     # Empty inputs
@@ -83,8 +83,8 @@ end # "_minkowski_addition(Region)"
 @testset "_minkowski_subtraction(Region)" begin
 
     pixel = Region([Run(0, 0:0)])
-    box3  = region_from_box(-1, 1, 1, -1)
-    box5  = region_from_box(-2, 2, 2, -2)
+    box3  = region_from_box(-1, -1, 1, 1)
+    box5  = region_from_box(-2, -2, 2, 2)
 
     # box5 ⊖ box3 = box3
     @test Regions._minkowski_subtraction(box5, box3) == box3
@@ -103,8 +103,8 @@ end # "_minkowski_addition(Region)"
     @test Regions._minkowski_subtraction(box3, Region()) == box3
 
     # (A ⊕ B) ⊖ B ⊆ A   (not strict equality in general, but holds for convex shapes)
-    a = region_from_box(0, 3, 3, 0)
-    b = region_from_box(-1, 1, 1, -1)
+    a = region_from_box(0, 0, 3, 3)
+    b = region_from_box(-1, -1, 1, 1)
     recovered = Regions._minkowski_subtraction(Regions._minkowski_addition(a, b), b)
     @test recovered == a
 
@@ -112,9 +112,9 @@ end # "_minkowski_subtraction(Region)"
 
 @testset "erosion" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
-    box7 = region_from_box(-3, 3, 3, -3)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
+    box7 = region_from_box(-3, -3, 3, 3)
 
     # Erosion shrinks by one layer on each side
     @test erosion(box5, box3) == box3
@@ -131,13 +131,13 @@ end # "_minkowski_subtraction(Region)"
     @test erosion(box5, origin_se) == box5
 
     # Idempotency: eroding twice by box3 = eroding once by a 5×5 box
-    @test erosion(erosion(box7, box3), box3) == erosion(box7, region_from_box(-2, 2, 2, -2))
+    @test erosion(erosion(box7, box3), box3) == erosion(box7, region_from_box(-2, -2, 2, 2))
 
     # Empty region → empty
     @test isempty(erosion(Region(), box3))
 
     # Interior pixels survive; boundary pixels are removed
-    box9 = region_from_box(-4, 4, 4, -4)
+    box9 = region_from_box(-4, -4, 4, 4)
     eroded = erosion(box9, box3)
     @test  contains(eroded, 0, 0)    # deep interior survives
     @test !contains(eroded, -4, 0)   # boundary removed
@@ -149,9 +149,9 @@ end # "erosion"
 
 @testset "dilation" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
-    box7 = region_from_box(-3, 3, 3, -3)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
+    box7 = region_from_box(-3, -3, 3, 3)
 
     # Dilation grows by one layer
     @test dilation(box3, box3) == box5
@@ -183,8 +183,8 @@ end # "dilation"
 
 @testset "opening" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
 
     # Opening a region larger than SE leaves it unchanged
     @test opening(box5, box3) == box5
@@ -196,7 +196,7 @@ end # "dilation"
     @test isempty(opening(Region([Run(0, 0:0)]), box3))
 
     # Result is always ⊆ input
-    a = region_from_box(0, 4, 4, 0)
+    a = region_from_box(0, 0, 4, 4)
     result = opening(a, box3)
     for run in result.runs
         for row in run.rows
@@ -214,8 +214,8 @@ end # "opening"
 
 @testset "closing" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
 
     # Closing a region without gaps leaves it unchanged
     @test closing(box5, box3) == box5
@@ -229,7 +229,7 @@ end # "opening"
     @test contains(c, 1, 0)
 
     # Result always contains the original region
-    a = region_from_box(0, 4, 4, 0)
+    a = region_from_box(0, 0, 4, 4)
     result = closing(a, box3)
     for run in a.runs
         for row in run.rows
@@ -247,8 +247,8 @@ end # "closing"
 
 @testset "morphological_gradient" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
 
     grad = morphological_gradient(box5, box3)
 
@@ -277,9 +277,9 @@ end # "morphological_gradient"
 
 @testset "inner_boundary" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
-    box7 = region_from_box(-3, 3, 3, -3)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
+    box7 = region_from_box(-3, -3, 3, 3)
 
     ib5 = inner_boundary(box5)
     ib7 = inner_boundary(box7)
@@ -313,8 +313,8 @@ end # "inner_boundary"
 
 @testset "outer_boundary" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
 
     ob = outer_boundary(box5)
 
@@ -342,15 +342,15 @@ end # "outer_boundary"
 
 @testset "holes" begin
 
-    box3  = region_from_box(-1, 1, 1, -1)
-    outer = region_from_box(-3, 3, 3, -3)
+    box3  = region_from_box(-1, -1, 1, 1)
+    outer = region_from_box(-3, -3, 3, 3)
 
     # Solid box has no holes
     @test isempty(holes(box3))
     @test isempty(holes(outer))
 
     # Frame = outer minus inner box → one hole
-    frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1))
+    frame = difference(region_from_box(-3, -3, 3, 3), region_from_box(-1, -1, 1, 1))
     hs = holes(frame)
     @test length(hs) == 1
 
@@ -366,12 +366,12 @@ end # "outer_boundary"
 
     # Two separate holes
     # Build a region with two inner 1×1 gaps separated by a wall
-    outer2  = region_from_box(-5, 5, 5, -5)
-    hole1   = region_from_box(-4, -2, -3, -4)  # left hole: cols -4:-3, rows -4:-2
-    hole2   = region_from_box(3, 4, 4, 3)      # right hole: cols 3:4, rows 3:4
-    two_holes = difference(difference(region_from_box(-5, 5, 5, -5),
-                                      region_from_box(-4, -2, -3, -4)),
-                           region_from_box(3, 4, 4, 3))
+    outer2  = region_from_box(-5, -5, 5, 5)
+    hole1   = region_from_box(-4, -4, -3, -2)  # left hole: cols -4:-3, rows -4:-2
+    hole2   = region_from_box(3, 3, 4, 4)      # right hole: cols 3:4, rows 3:4
+    two_holes = difference(difference(region_from_box(-5, -5, 5, 5),
+                                      region_from_box(-4, -4, -3, -2)),
+                           region_from_box(3, 3, 4, 4))
     hs2 = holes(two_holes)
     @test length(hs2) == 2
 
@@ -388,13 +388,13 @@ end # "holes"
 
 @testset "fill_holes" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
+    box3 = region_from_box(-1, -1, 1, 1)
 
     # Solid region has nothing to fill
     @test fill_holes(box3) == box3
 
     # Frame → filled region contains entire bounding box
-    frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1))
+    frame = difference(region_from_box(-3, -3, 3, 3), region_from_box(-1, -1, 1, 1))
     filled = fill_holes(frame)
 
     @test contains(filled, 0, 0)     # previously a hole
@@ -409,7 +409,7 @@ end # "holes"
     end
 
     # Filling does not mutate the original
-    frame2 = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1))
+    frame2 = difference(region_from_box(-3, -3, 3, 3), region_from_box(-1, -1, 1, 1))
     frame2_runs_before = length(frame2.runs)
     fill_holes(frame2)
     @test length(frame2.runs) == frame2_runs_before
@@ -424,8 +424,8 @@ end # "fill_holes"
 
 @testset "Vector{Region} morphological operations" begin
 
-    box3 = region_from_box(-1, 1, 1, -1)
-    box5 = region_from_box(-2, 2, 2, -2)
+    box3 = region_from_box(-1, -1, 1, 1)
+    box5 = region_from_box(-2, -2, 2, 2)
     se   = box3
 
     # Each operation reduces the two-element vector [box5, pixel] appropriately
@@ -468,7 +468,7 @@ end # "fill_holes"
     @test length(outer_boundary([box5, box3])) == 2
 
     # fill_holes: applies per region, always same count
-    frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1))
+    frame = difference(region_from_box(-3, -3, 3, 3), region_from_box(-1, -1, 1, 1))
     filled_vec = fill_holes([frame, box3])
     @test length(filled_vec) == 2
     @test contains(filled_vec[1], 0, 0)   # frame hole filled

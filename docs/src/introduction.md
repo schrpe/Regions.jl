@@ -11,7 +11,7 @@ A region can be seen as a set of discrete coordinates in the cartesian plane. In
 
 A region is represented with a sorted list of vertical runs. Runs themselves are represented with a column coordinate and a range of vertical row coordinates.
 
-**Coordinate convention.** Coordinates are written `(column, row)` and the package follows the *mathematical* convention: column (x) increases to the right and row (y) increases upward. As a result `top(r)` returns the maximum row value and `bottom(r)` returns the minimum row value, and the function names match the visual meaning. Note that this is the opposite of Julia's image-display convention, where the first index of `img[i, j]` is interpreted as a downward-growing row; if you mix Regions with image arrays directly, remember that what the package calls a larger row sits *above* a smaller one.
+**Coordinate convention.** Coordinates are written `(column, row)` and the package follows the standard *image* convention: column (x) increases to the right and row (y) increases downward. As a result `top(r)` returns the minimum row value (the topmost row, with the smallest index) and `bottom(r)` returns the maximum row value (the bottommost row). This matches Julia's image-array indexing where `img[i, j]` puts row `i = 1` at the visual top of the displayed image, so regions produced from image arrays index back into them directly.
 
 ![Region and runs](region_and_runs.svg)
 
@@ -248,14 +248,14 @@ Region(Run[Run(-2, 0:0), Run(-1, 0:0), Run(0, -2:2), Run(1, 0:0), Run(2, 0:0)], 
 
 ### Build regions from geometry
 
-Regions can be created from simple geometric forms. `region_from_box` creates a filled rectangular region from its bounding box coordinates. The four arguments are `left`, `top`, `right`, `bottom`, where `top` > `bottom` and `right` > `left`.
+Regions can be created from simple geometric forms. `region_from_box` creates a filled rectangular region from its bounding box coordinates. The four arguments are `left`, `top`, `right`, `bottom`, where `top` < `bottom` and `left` < `right` under the package's image-coordinate convention.
 
 ```jldoctest reg
-julia> box = region_from_box(1, 4, 3, 1)
+julia> box = region_from_box(1, 1, 3, 4)
 Region(Run[Run(1, 1:4), Run(2, 1:4), Run(3, 1:4)], false)
 
 julia> bounds(box)
-(1, 4, 3, 1)
+(1, 1, 3, 4)
 
 julia> contains(box, 2, 3)
 true
@@ -264,7 +264,7 @@ julia> contains(box, 0, 3)
 false
 ```
 
-The result contains one vertical run per column, each spanning from `bottom` to `top`.
+The result contains one vertical run per column, each spanning from `top` to `bottom`.
 
 `region_from_polygon` creates a filled region from an arbitrary polygon given as a vector of
 `(column, row)` vertex pairs, in clockwise or counter-clockwise order.

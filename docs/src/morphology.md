@@ -16,7 +16,7 @@ set the spatial scale at which features are grown, shrunk, or detected.
 | SE | Construction | Character |
 |----|-------------|-----------|
 | Disk | `region_from_circle(0, 0, r)` | Isotropic — treats all directions equally |
-| Square | `region_from_box(-r, r, r, -r)` | Axis-aligned — sharper corners, faster |
+| Square | `region_from_box(-r, -r, r, r)` | Axis-aligned — sharper corners, faster |
 
 ## Mathematical foundation
 
@@ -40,9 +40,9 @@ can be any region — disks, boxes, polygons, line segments, even point clouds.
 entirely inside `a`. Protrusions narrower than the SE are trimmed away.
 
 ```jldoctest reg
-julia> region5 = region_from_box(-3, 3, 3, -3);  # 7×7 = 49 pixels
+julia> region5 = region_from_box(-3, -3, 3, 3);  # 7×7 = 49 pixels
 
-julia> se_sq   = region_from_box(-1, 1, 1, -1);  # 3×3 square SE
+julia> se_sq   = region_from_box(-1, -1, 1, 1);  # 3×3 square SE
 
 julia> e = erosion(region5, se_sq);
 
@@ -65,7 +65,7 @@ gives `region_from_circle(0,0,r-s)` when `r > s`.
 pixel of `a` — equivalently, every point reachable by sliding the SE over the region.
 
 ```jldoctest reg
-julia> small = region_from_box(-1, 1, 1, -1);   # 3×3
+julia> small = region_from_box(-1, -1, 1, 1);   # 3×3
 
 julia> d = dilation(small, se_sq);              # 3×3 dilated by 3×3
 
@@ -109,8 +109,8 @@ small holes) smaller than the SE while leaving the overall shape nearly unchange
 always **contains** `a` as a subset.
 
 ```jldoctest reg
-julia> gapped = union(region_from_box(-3, 3, -1, -3),   # two bars with a 1-column gap
-                      region_from_box( 1, 3,  3, -3));
+julia> gapped = union(region_from_box(-3, -3, -1, 3),   # two bars with a 1-column gap
+                      region_from_box( 1, -3,  3, 3));
 
 julia> area(gapped)                                      # 6 columns × 7 rows, gap missing
 42
@@ -177,8 +177,8 @@ false
 inside the bounding box that do not touch any edge. `fill_holes(a)` fills them all.
 
 ```jldoctest reg
-julia> box_frame = difference(region_from_box(-3, 3, 3, -3),
-                              region_from_box(-1, 1, 1, -1));  # 7×7 box with 3×3 hole
+julia> box_frame = difference(region_from_box(-3, -3, 3, 3),
+                              region_from_box(-1, -1, 1, 1));  # 7×7 box with 3×3 hole
 
 julia> hs = holes(box_frame);
 

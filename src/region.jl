@@ -211,7 +211,7 @@ julia> r = Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]);
 julia> c = center_region(r);
 
 julia> left(c), right(c), bottom(c), top(c)
-(-1, 1, -1, 1)
+(-1, 1, 1, -1)
 ```
 """
 function center_region(r::Region)
@@ -286,7 +286,7 @@ Only valid for non-complement, non-empty regions.
 ```jldoctest
 julia> using Regions
 
-julia> left(region_from_box(2, 5, 7, 1))
+julia> left(region_from_box(2, 1, 7, 5))
 2
 ```
 """
@@ -299,22 +299,22 @@ end
 """
     top(x::Region)
 
-Returns the largest row coordinate of `x`. Under the mathematical y-axis convention this is
-the topmost row of the region.
+Returns the smallest row coordinate of `x`. Under the image-coordinate convention used by
+the package this is the topmost row of the region (the row with the smallest index).
 
 Only valid for non-complement, non-empty regions.
 
 ```jldoctest
 julia> using Regions
 
-julia> top(region_from_box(2, 5, 7, 1))
-5
+julia> top(region_from_box(2, 1, 7, 5))
+1
 ```
 """
 function top(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(r.runs) "cannot calculate for empty regions"
-    maximum(run.rows.stop for run in r.runs)
+    minimum(run.rows.start for run in r.runs)
 end
 
 """
@@ -327,7 +327,7 @@ Only valid for non-complement, non-empty regions.
 ```jldoctest
 julia> using Regions
 
-julia> right(region_from_box(2, 5, 7, 1))
+julia> right(region_from_box(2, 1, 7, 5))
 7
 ```
 """
@@ -340,47 +340,47 @@ end
 """
     bottom(x::Region)
 
-Returns the smallest row coordinate of `x`. Under the mathematical y-axis convention this is
-the bottommost row of the region.
+Returns the largest row coordinate of `x`. Under the image-coordinate convention used by
+the package this is the bottommost row of the region (the row with the largest index).
 
 Only valid for non-complement, non-empty regions.
 
 ```jldoctest
 julia> using Regions
 
-julia> bottom(region_from_box(2, 5, 7, 1))
-1
+julia> bottom(region_from_box(2, 1, 7, 5))
+5
 ```
 """
 function bottom(r::Region)
     @assert !r.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(r.runs) "cannot calculate for empty regions"
-    minimum(run.rows.start for run in r.runs)
+    maximum(run.rows.stop for run in r.runs)
 end
 
 """
     bounds(x::Region)
 
 Returns the bounding box of `x` as `(left, top, right, bottom)` — equivalently
-`(min column, max row, max column, min row)`. Note that `top > bottom` under the mathematical
-y-axis convention used throughout the package.
+`(min column, min row, max column, max row)`. Under the image-coordinate convention used by
+the package, `top < bottom` (rows increase downward).
 
 Only valid for non-complement, non-empty regions.
 
 ```jldoctest
 julia> using Regions
 
-julia> bounds(region_from_box(2, 5, 7, 1))
-(2, 5, 7, 1)
+julia> bounds(region_from_box(2, 1, 7, 5))
+(2, 1, 7, 5)
 ```
 """
 function bounds(region::Region)
     @assert !region.complement "cannot calculate for infinite (complement) regions"
     @assert !isempty(region.runs) "cannot calculate for empty regions"
     return (minimum(run.column for run in region.runs),
-            maximum(run.rows.stop for run in region.runs),
+            minimum(run.rows.start for run in region.runs),
             maximum(run.column for run in region.runs),
-            minimum(run.rows.start for run in region.runs))
+            maximum(run.rows.stop for run in region.runs))
 end
 
 """
@@ -496,9 +496,9 @@ returned with the appropriate `complement` flag.
 ```jldoctest
 julia> using Regions
 
-julia> a = region_from_box(0, 3, 4, 0);
+julia> a = region_from_box(0, 0, 4, 3);
 
-julia> b = region_from_box(3, 5, 7, 2);
+julia> b = region_from_box(3, 2, 7, 5);
 
 julia> area(union(a, b))
 36
@@ -574,9 +574,9 @@ Complement regions are handled transparently via De Morgan's laws.
 ```jldoctest
 julia> using Regions
 
-julia> a = region_from_box(0, 3, 4, 0);
+julia> a = region_from_box(0, 0, 4, 3);
 
-julia> b = region_from_box(3, 5, 7, 2);
+julia> b = region_from_box(3, 2, 7, 5);
 
 julia> area(intersection(a, b))
 4
@@ -674,9 +674,9 @@ Complement regions are handled transparently via De Morgan's laws.
 ```jldoctest
 julia> using Regions
 
-julia> a = region_from_box(0, 3, 4, 0);
+julia> a = region_from_box(0, 0, 4, 3);
 
-julia> b = region_from_box(3, 5, 7, 2);
+julia> b = region_from_box(3, 2, 7, 5);
 
 julia> area(difference(a, b))
 16
@@ -701,29 +701,29 @@ end
     region_from_box(left::Integer, top::Integer, right::Integer, bottom::Integer)
 
 Create a filled rectangular region from its bounding-box coordinates. The argument order is
-`left, top, right, bottom`, and the package's mathematical y-axis convention requires
-`top > bottom` and `right > left`. The result contains one vertical run per column, each
-spanning rows `bottom:top`.
+`left, top, right, bottom`, and the package's image-coordinate convention requires
+`top < bottom` and `left < right` (rows increase downward, columns increase to the right).
+The result contains one vertical run per column, each spanning rows `top:bottom`.
 
 ```jldoctest
 julia> using Regions
 
-julia> r = region_from_box(1, 4, 3, 1);
+julia> r = region_from_box(1, 1, 3, 4);
 
 julia> bounds(r)
-(1, 4, 3, 1)
+(1, 1, 3, 4)
 
 julia> area(r)
 12
 ```
 """
 function region_from_box(left::Integer, top::Integer, right::Integer, bottom::Integer)
-    @assert bottom < top "bottom must be smaller than top"
+    @assert top < bottom "top must be smaller than bottom"
     @assert left < right "left must be smaller than right"
 
     region = Region(Run[])
     for col in left:right
-        push!(region.runs, Run(col, bottom:top))
+        push!(region.runs, Run(col, top:bottom))
     end
     return region
 end
@@ -1006,7 +1006,7 @@ end
     region_to_image(r::Region, color=Gray(true))
 
 Render a region to a 2D `Array` whose element type matches `color`. The image is sized to
-the region's bounding box: `(top - bottom + 1, right - left + 1)` rows by columns. Pixels
+the region's bounding box: `(bottom - top + 1, right - left + 1)` rows by columns. Pixels
 outside the region are zero (e.g. `Gray(0)`, `RGB(0,0,0)`, or `RGBA(0,0,0,0)`); pixels
 inside are set to `color`. The element type of the returned array is `typeof(color)`, so
 calling with `Gray`, `RGB`, or `RGBA` selects the output format.
@@ -1022,10 +1022,10 @@ for `MIME"image/png"` calls this function automatically with a half-transparent 
 """
 function region_to_image(region::Region, color=Gray(true))
     (l, t, r, b) = bounds(region)
-    img = zeros(typeof(color), t-b+1, r-l+1)
+    img = zeros(typeof(color), b-t+1, r-l+1)
     for run in region.runs
         for row in run.rows
-            img[row-b+1, run.column-l+1] = color
+            img[row-t+1, run.column-l+1] = color
         end
     end
     return img

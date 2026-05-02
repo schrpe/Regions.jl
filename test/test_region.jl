@@ -54,7 +54,7 @@ using Images: Gray, RGBA
     # center_region: moves bounding-box midpoint to origin via integer division
     let c = center_region(Region([Run(3, 2:4), Run(4, 2:4), Run(5, 2:4)]))
         @test left(c) == -1 && right(c) == 1
-        @test bottom(c) == -1 && top(c) == 1
+        @test bottom(c) == 1 && top(c) == -1
     end
     # even column span: columns 10–11 → midpoint = (10+11)÷2 = 10, shift −10 → 0:1
     let c = center_region(Region([Run(10, 5:6), Run(11, 5:6)]))
@@ -257,34 +257,34 @@ end # "Complement"
 @testset "region_from_box" begin
 
     # Basic box: columns 1..4, rows 2..3 → 4 vertical runs (one per column)
-    r = region_from_box(1, 3, 4, 2)
+    r = region_from_box(1, 2, 4, 3)
     @test length(r.runs) == 4
     @test r.runs[1] == Run(1, 2:3)
     @test r.runs[4] == Run(4, 2:3)
     @test r.complement == false
 
     # Narrow box: columns 0..2, rows 0..1 → 3 vertical runs
-    r = region_from_box(0, 1, 2, 0)
+    r = region_from_box(0, 0, 2, 1)
     @test length(r.runs) == 3
     @test r.runs[1] == Run(0, 0:1)
     @test r.runs[3] == Run(2, 0:1)
 
     # Negative coordinates: columns -4..-2, rows -3..-1 → 3 vertical runs
-    r = region_from_box(-4, -1, -2, -3)
+    r = region_from_box(-4, -3, -2, -1)
     @test length(r.runs) == 3
     @test r.runs[1] == Run(-4, -3:-1)
     @test r.runs[2] == Run(-3, -3:-1)
     @test r.runs[3] == Run(-2, -3:-1)
 
     # Bounds of the resulting region match box arguments
-    r = region_from_box(2, 7, 9, 4)
+    r = region_from_box(2, 4, 9, 7)
     @test left(r)   == 2
     @test right(r)  == 9
-    @test bottom(r) == 4
-    @test top(r)    == 7
+    @test top(r)    == 4
+    @test bottom(r) == 7
 
     # Every pixel inside the box is contained
-    r = region_from_box(0, 2, 3, 0)
+    r = region_from_box(0, 0, 3, 2)
     @test contains(r, 0, 0)
     @test contains(r, 3, 2)
     @test contains(r, 1, 1)
@@ -295,13 +295,13 @@ end # "Complement"
     @test !contains(r, 0, -1)
     @test !contains(r, 0, 3)
 
-    # Assertion fires when bottom >= top
+    # Assertion fires when top >= bottom
     @test_throws AssertionError region_from_box(0, 1, 5, 1)
-    @test_throws AssertionError region_from_box(0, 0, 5, 1)
+    @test_throws AssertionError region_from_box(0, 1, 5, 0)
 
     # Assertion fires when left >= right
-    @test_throws AssertionError region_from_box(5, 2, 5, 0)
-    @test_throws AssertionError region_from_box(6, 2, 5, 0)
+    @test_throws AssertionError region_from_box(5, 0, 5, 2)
+    @test_throws AssertionError region_from_box(6, 0, 5, 2)
 
 end # "region_from_box"
 
@@ -332,8 +332,8 @@ end # "region_from_box"
     r = region_from_circle(3, 4, 5)
     @test left(r)   == 3 - 5
     @test right(r)  == 3 + 5
-    @test bottom(r) == 4 - 5
-    @test top(r)    == 4 + 5
+    @test top(r)    == 4 - 5
+    @test bottom(r) == 4 + 5
 
     # Interior points are contained
     r = region_from_circle(0, 0, 5)
@@ -440,8 +440,8 @@ end # "region_from_polygon"
 end # "Set operations on empty regions"
 
 @testset "difference does not mutate first operand" begin
-    a = region_from_box(0, 3, 4, 0)   # 5×4 = 20 pixels
-    b = region_from_box(3, 5, 7, 2)   # 5×4 = 20 pixels, overlapping 2×2 = 4
+    a = region_from_box(0, 0, 4, 3)   # 5×4 = 20 pixels
+    b = region_from_box(3, 2, 7, 5)   # 5×4 = 20 pixels, overlapping 2×2 = 4
     a_runs_before = copy(a.runs)
     _ = difference(a, b)
     @test a.runs == a_runs_before      # a must not be modified
@@ -463,25 +463,25 @@ end
     regions = [Region([Run(5, 1:4)])]
     @test left(regions)   == 5
     @test right(regions)  == 5
-    @test top(regions)    == 4
-    @test bottom(regions) == 1
-    @test bounds(regions) == (5, 4, 5, 1)
+    @test top(regions)    == 1
+    @test bottom(regions) == 4
+    @test bounds(regions) == (5, 1, 5, 4)
 
     # Single region, multiple runs spanning different columns
     regions = [Region([Run(3, 1:5), Run(9, 4:7)])]
     @test left(regions)   == 3
     @test right(regions)  == 9
-    @test top(regions)    == 7
-    @test bottom(regions) == 1
-    @test bounds(regions) == (3, 7, 9, 1)
+    @test top(regions)    == 1
+    @test bottom(regions) == 7
+    @test bounds(regions) == (3, 1, 9, 7)
 
     # Two regions: bounds span both
     regions = [Region([Run(3, 1:5)]), Region([Run(9, 4:7)])]
     @test left(regions)   == 3
     @test right(regions)  == 9
-    @test top(regions)    == 7
-    @test bottom(regions) == 1
-    @test bounds(regions) == (3, 7, 9, 1)
+    @test top(regions)    == 1
+    @test bottom(regions) == 7
+    @test bounds(regions) == (3, 1, 9, 7)
 
     # Three regions
     regions = [
@@ -491,9 +491,9 @@ end
     ]
     @test left(regions)   == 0
     @test right(regions)  == 5
-    @test top(regions)    == 6
-    @test bottom(regions) == 0
-    @test bounds(regions) == (0, 6, 5, 0)
+    @test top(regions)    == 0
+    @test bottom(regions) == 6
+    @test bounds(regions) == (0, 0, 5, 6)
 
 end # "bounds(Vector{Region})"
 

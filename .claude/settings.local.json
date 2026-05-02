@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(julia -e \"import Pkg; Pkg.add\\([\\\\\"FileIO\\\\\", \\\\\"ImageIO\\\\\", \\\\\"ImageMagick\\\\\"]\\)\")",
-      "Bash(julia -e \"import Pkg; Pkg.status\\(\\)\")"
-    ]
-  }
-}

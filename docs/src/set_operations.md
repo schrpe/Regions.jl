@@ -23,9 +23,9 @@ pixel-wise logical OR. Pixels exclusive to `a`, pixels exclusive to `b`, and pix
 overlap all appear in the result.
 
 ```jldoctest reg
-julia> a = region_from_box(0, 3, 4, 0);  # 5 columns × 4 rows = 20 pixels
+julia> a = region_from_box(0, 0, 4, 3);  # 5 columns × 4 rows = 20 pixels
 
-julia> b = region_from_box(3, 5, 7, 2);  # 5 columns × 4 rows = 20 pixels, partly overlapping
+julia> b = region_from_box(3, 2, 7, 5);  # 5 columns × 4 rows = 20 pixels, partly overlapping
 
 julia> u = union(a, b);
 
@@ -113,7 +113,7 @@ julia> disk   = region_from_circle(0, 0, 10);
 
 julia> hub    = region_from_circle(0, 0, 3);
 
-julia> notch  = region_from_box(-1, 11, 1, 7);   # rectangular notch at the top
+julia> notch  = region_from_box(-1, 7, 1, 11);   # rectangular notch at the bottom
 
 julia> ring_with_notch = difference(difference(disk, hub), notch);
 

@@ -62,7 +62,7 @@ To reconcile the two:
 - **Match Regions semantics from ImageMorphology**: pass `Fill(false)` padding to the
   ImageMorphology call, so out-of-image pixels are treated as background.
 - **Match ImageMorphology semantics from Regions**: intersect with an inner box, e.g.
-  `intersection(eroded, region_from_box(2, H-1, W-1, 2))`, so edge pixels are excluded.
+  `intersection(eroded, region_from_box(2, 2, W-1, H-1))`, so edge pixels are excluded.
 
 ### When to use which
 

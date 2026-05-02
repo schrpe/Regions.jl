@@ -41,14 +41,15 @@ end
 """
     top(x::Vector{Region})
 
-Calculates the maximum row coordinate across a vector of regions.
+Calculates the minimum row coordinate across a vector of regions — the topmost row under
+the package's image-coordinate convention.
 Returns `missing` for an empty vector.
 
 ```jldoctest
 julia> using Regions
 
 julia> top([Region([Run(2, 1:3)]), Region([Run(7, 2:6)])])
-6
+1
 
 julia> ismissing(top(Region[]))
 true
@@ -58,7 +59,7 @@ function top(regions::Vector{Region})
     if !isempty(regions)
         t = top(regions[1])
         for region in regions
-            t = max(t, top(region))
+            t = min(t, top(region))
         end
         return t
     else
@@ -97,14 +98,15 @@ end
 """
     bottom(x::Vector{Region})
 
-Calculates the minimum row coordinate across a vector of regions.
+Calculates the maximum row coordinate across a vector of regions — the bottommost row under
+the package's image-coordinate convention.
 Returns `missing` for an empty vector.
 
 ```jldoctest
 julia> using Regions
 
 julia> bottom([Region([Run(2, 1:3)]), Region([Run(7, 5:8)])])
-1
+8
 
 julia> ismissing(bottom(Region[]))
 true
@@ -114,7 +116,7 @@ function bottom(regions::Vector{Region})
     if !isempty(regions)
         b = bottom(regions[1])
         for region in regions
-            b = min(b, bottom(region))
+            b = max(b, bottom(region))
         end
         return b
     else
@@ -125,14 +127,15 @@ end
 """
     bounds(x::Vector{Region})
 
-Calculates `(left, top, right, bottom)` — the minimum column, maximum row, maximum column,
-and minimum row — across all regions in the vector. Returns `missing` for an empty vector.
+Calculates `(left, top, right, bottom)` — the minimum column, minimum row, maximum column,
+and maximum row — across all regions in the vector. Under the image-coordinate convention,
+`top < bottom`. Returns `missing` for an empty vector.
 
 ```jldoctest
 julia> using Regions
 
 julia> bounds([Region([Run(2, 1:3)]), Region([Run(7, 2:6)])])
-(2, 6, 7, 1)
+(2, 1, 7, 6)
 
 julia> ismissing(bounds(Region[]))
 true
@@ -146,9 +149,9 @@ function bounds(regions::Vector{Region})
         b = bottom(regions[1])
         for region in regions
             l = min(l, left(region))
-            t = max(t, top(region))
+            t = min(t, top(region))
             r = max(r, right(region))
-            b = min(b, bottom(region))
+            b = max(b, bottom(region))
         end
         return l, t, r, b
     else
@@ -177,18 +180,18 @@ Compare with [`region_to_image`](@ref), which renders a single `Region` with a s
 """
 function regions_to_image(regions::Vector{Region}, colors=[Gray(true)])
     (l, t, r, b) = bounds(regions)
-    img = zeros(eltype(colors), t-b+1, r-l+1)
+    img = zeros(eltype(colors), b-t+1, r-l+1)
     n = 1
-    for region in regions 
+    for region in regions
         for run in region.runs
             for row in run.rows
                 ca = color(colors[n])
                 aa = alpha(colors[n])
-                cb = color(img[row-b+1, run.column-l+1])
-                ab = alpha(img[row-b+1, run.column-l+1])
+                cb = color(img[row-t+1, run.column-l+1])
+                ab = alpha(img[row-t+1, run.column-l+1])
                 ac = aa + (1 - aa) * ab
                 cc = (aa * ca + (1 - aa) * ab * cb) / ac
-                img[row-b+1, run.column-l+1] = eltype(colors)(cc, ac)
+                img[row-t+1, run.column-l+1] = eltype(colors)(cc, ac)
             end
         end
         n = mod1(n + 1, length(colors))
@@ -255,9 +258,9 @@ Apply [`erosion`](@ref) to each region in `regions` with structuring element
 ```jldoctest
 julia> using Regions
 
-julia> regions = [region_from_box(-2, 2, 2, -2), Region([Run(0, 0:0)])];
+julia> regions = [region_from_box(-2, -2, 2, 2), Region([Run(0, 0:0)])];
 
-julia> se = region_from_box(-1, 1, 1, -1);
+julia> se = region_from_box(-1, -1, 1, 1);
 
 julia> length(erosion(regions, se))
 1
@@ -275,11 +278,11 @@ Apply [`dilation`](@ref) to each region in `regions` with structuring element
 ```jldoctest
 julia> using Regions
 
-julia> regions = [region_from_box(-1, 1, 1, -1)];
+julia> regions = [region_from_box(-1, -1, 1, 1)];
 
-julia> se = region_from_box(-1, 1, 1, -1);
+julia> se = region_from_box(-1, -1, 1, 1);
 
-julia> dilation(regions, se) == [region_from_box(-2, 2, 2, -2)]
+julia> dilation(regions, se) == [region_from_box(-2, -2, 2, 2)]
 true
 ```
 """
@@ -295,11 +298,11 @@ Apply [`opening`](@ref) to each region in `regions` with structuring element
 ```jldoctest
 julia> using Regions
 
-julia> large = region_from_box(-2, 2, 2, -2);
+julia> large = region_from_box(-2, -2, 2, 2);
 
 julia> pixel = Region([Run(0, 0:0)]);
 
-julia> se    = region_from_box(-1, 1, 1, -1);
+julia> se    = region_from_box(-1, -1, 1, 1);
 
 julia> length(opening([large, pixel], se))
 1
@@ -319,7 +322,7 @@ julia> using Regions
 
 julia> gapped = Region([Run(-1, 0:0), Run(1, 0:0)]);
 
-julia> se = region_from_box(-1, 1, 1, -1);
+julia> se = region_from_box(-1, -1, 1, 1);
 
 julia> c = closing([gapped], se);
 
@@ -339,9 +342,9 @@ structuring element `se`, returning a new vector of non-empty results.
 ```jldoctest
 julia> using Regions
 
-julia> box = region_from_box(-2, 2, 2, -2);
+julia> box = region_from_box(-2, -2, 2, 2);
 
-julia> se  = region_from_box(-1, 1, 1, -1);
+julia> se  = region_from_box(-1, -1, 1, 1);
 
 julia> grad = morphological_gradient([box], se);
 
@@ -361,7 +364,7 @@ vector of non-empty results.
 ```jldoctest
 julia> using Regions
 
-julia> box = region_from_box(-2, 2, 2, -2);
+julia> box = region_from_box(-2, -2, 2, 2);
 
 julia> ib = inner_boundary([box]);
 
@@ -381,7 +384,7 @@ vector of non-empty results.
 ```jldoctest
 julia> using Regions
 
-julia> box = region_from_box(-2, 2, 2, -2);
+julia> box = region_from_box(-2, -2, 2, 2);
 
 julia> ob = outer_boundary([box]);
 
@@ -401,7 +404,7 @@ with all holes filled.
 ```jldoctest
 julia> using Regions
 
-julia> frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1));
+julia> frame = difference(region_from_box(-3, -3, 3, 3), region_from_box(-1, -1, 1, 1));
 
 julia> filled = fill_holes([frame]);
 

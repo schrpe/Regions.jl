@@ -74,7 +74,7 @@ julia> height(Region([Run(0, -1:1), Run(1, -1:1), Run(2, -1:1)]))
 """
 function height(r::Region)
     @assert !r.complement && !isempty(r.runs) "height requires a non-empty, non-complement region"
-    return top(r) - bottom(r) + 1
+    return bottom(r) - top(r) + 1
 end
 
 

@@ -171,7 +171,7 @@
         @test length(polys2[1]) == 6  # 4 corners + 2 collinear midpoints
 
         # Frame with hole → two polygons
-        frame = difference(region_from_box(-2, 2, 2, -2), region_from_box(-1, 1, 1, -1))
+        frame = difference(region_from_box(-2, -2, 2, 2), region_from_box(-1, -1, 1, 1))
         pf = vectorized_boundaries(frame)
         @test length(pf) == 2
 

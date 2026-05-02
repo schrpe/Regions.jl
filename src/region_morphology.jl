@@ -113,9 +113,9 @@ Complement regions are handled via DeMorgan's rules.
 ```jldoctest
 julia> using Regions
 
-julia> big = region_from_box(-2, 2, 2, -2);
+julia> big = region_from_box(-2, -2, 2, 2);
 
-julia> se  = region_from_box(-1, 1, 1, -1);
+julia> se  = region_from_box(-1, -1, 1, 1);
 
 julia> erosion(big, se) == se
 true
@@ -150,11 +150,11 @@ Complement regions are handled via DeMorgan's rules.
 ```jldoctest
 julia> using Regions
 
-julia> small = region_from_box(-1, 1, 1, -1);
+julia> small = region_from_box(-1, -1, 1, 1);
 
-julia> se    = region_from_box(-1, 1, 1, -1);
+julia> se    = region_from_box(-1, -1, 1, 1);
 
-julia> dilation(small, se) == region_from_box(-2, 2, 2, -2)
+julia> dilation(small, se) == region_from_box(-2, -2, 2, 2)
 true
 ```
 """
@@ -184,9 +184,9 @@ Structuring elements should be centred on the origin.
 ```jldoctest
 julia> using Regions
 
-julia> big = region_from_box(-2, 2, 2, -2);
+julia> big = region_from_box(-2, -2, 2, 2);
 
-julia> se  = region_from_box(-1, 1, 1, -1);
+julia> se  = region_from_box(-1, -1, 1, 1);
 
 julia> opening(big, se) == big
 true
@@ -213,7 +213,7 @@ julia> using Regions
 
 julia> gapped = Region([Run(-1, 0:0), Run(1, 0:0)]);
 
-julia> se = region_from_box(-1, 1, 1, -1);
+julia> se = region_from_box(-1, -1, 1, 1);
 
 julia> c = closing(gapped, se);
 
@@ -239,9 +239,9 @@ Structuring elements should be centred on the origin.
 ```jldoctest
 julia> using Regions
 
-julia> box = region_from_box(-2, 2, 2, -2);
+julia> box = region_from_box(-2, -2, 2, 2);
 
-julia> se  = region_from_box(-1, 1, 1, -1);
+julia> se  = region_from_box(-1, -1, 1, 1);
 
 julia> grad = morphological_gradient(box, se);
 
@@ -266,7 +266,7 @@ inside `a`.
 ```jldoctest
 julia> using Regions
 
-julia> box = region_from_box(-2, 2, 2, -2);
+julia> box = region_from_box(-2, -2, 2, 2);
 
 julia> ib = inner_boundary(box);
 
@@ -278,7 +278,7 @@ false
 ```
 """
 function inner_boundary(a::Region)
-    se = region_from_box(-1, 1, 1, -1)
+    se = region_from_box(-1, -1, 1, 1)
     difference(copy(a), erosion(a, se))
 end
 
@@ -294,7 +294,7 @@ outside `a`.
 ```jldoctest
 julia> using Regions
 
-julia> box = region_from_box(-2, 2, 2, -2);
+julia> box = region_from_box(-2, -2, 2, 2);
 
 julia> ob = outer_boundary(box);
 
@@ -306,7 +306,7 @@ false
 ```
 """
 function outer_boundary(a::Region)
-    se = region_from_box(-1, 1, 1, -1)
+    se = region_from_box(-1, -1, 1, 1)
     difference(dilation(a, se), a)
 end
 
@@ -324,7 +324,7 @@ Only non-complement regions are supported.
 ```jldoctest
 julia> using Regions
 
-julia> frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1));
+julia> frame = difference(region_from_box(-3, -3, 3, 3), region_from_box(-1, -1, 1, 1));
 
 julia> hs = holes(frame);
 
@@ -361,7 +361,7 @@ Only non-complement regions are supported.
 ```jldoctest
 julia> using Regions
 
-julia> frame = difference(region_from_box(-3, 3, 3, -3), region_from_box(-1, 1, 1, -1));
+julia> frame = difference(region_from_box(-3, -3, 3, 3), region_from_box(-1, -1, 1, 1));
 
 julia> filled = fill_holes(frame);
 

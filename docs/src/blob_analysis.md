@@ -43,9 +43,9 @@ The `dx` parameter bridges horizontal gaps. Two boxes separated by a 3-column ga
 two separate blobs at the default `dx = 1`, but merge into one when `dx = 4`:
 
 ```jldoctest reg
-julia> box_a = region_from_box(0, 5, 3, 0);      # columns 0–3, rows 0–5
+julia> box_a = region_from_box(0, 0, 3, 5);      # columns 0–3, rows 0–5
 
-julia> box_b = region_from_box(7, 5, 10, 0);     # columns 7–10, rows 0–5
+julia> box_b = region_from_box(7, 0, 10, 5);     # columns 7–10, rows 0–5
 
 julia> two_boxes = union(box_a, box_b);
 
@@ -65,7 +65,7 @@ the bounding box. `bounds_center` returns the midpoint of the bounding box as
 `(column, row)`. `aspect_ratio` returns `width / height`.
 
 ```jldoctest reg
-julia> blob = region_from_box(0, 1, 9, 0);       # 10-wide × 2-tall rectangle
+julia> blob = region_from_box(0, 0, 9, 1);       # 10-wide × 2-tall rectangle
 
 julia> area(blob)
 20
@@ -95,7 +95,7 @@ radians from the column axis toward the row axis. The equivalent ellipse is usef
 estimating the orientation and elongation of a blob.
 
 ```jldoctest reg
-julia> elong_box = region_from_box(0, 1, 9, -1);   # 10-wide × 3-tall, centred at row 0
+julia> elong_box = region_from_box(0, -1, 9, 1);   # 10-wide × 3-tall, centred at row 0
 
 julia> centroid(elong_box)
 (4.5, 0.0)
@@ -128,7 +128,7 @@ julia> perimeter(c5)
 julia> round(compactness(c5); digits=4)             # close to 1 — nearly circular
 1.902
 
-julia> round(compactness(region_from_box(-2, 2, 2, -2)); digits=4)  # 5×5 square
+julia> round(compactness(region_from_box(-2, -2, 2, 2)); digits=4)  # 5×5 square
 1.2732
 ```
 
@@ -164,7 +164,7 @@ the narrowest gap a physical caliper could pass through. The maximum Feret diame
 the longest diagonal of the convex hull.
 
 ```jldoctest reg
-julia> blob_wide = region_from_box(0, 1, 9, 0);    # 10-wide × 2-tall
+julia> blob_wide = region_from_box(0, 0, 9, 1);    # 10-wide × 2-tall
 
 julia> mn_f, mx_f = feret_diameters(blob_wide);
 
@@ -182,8 +182,8 @@ julia> round(mx_f; digits=3)                        # corner-to-corner diagonal
 simply-connected (hole-free) regions.
 
 ```jldoctest reg
-julia> blob_frame = difference(region_from_box(-3, 3, 3, -3),
-                               region_from_box(-1, 1, 1, -1));  # 7×7 frame with 3×3 hole
+julia> blob_frame = difference(region_from_box(-3, -3, 3, 3),
+                               region_from_box(-1, -1, 1, 1));  # 7×7 frame with 3×3 hole
 
 julia> number_of_holes(blob_frame)
 1

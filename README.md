@@ -25,16 +25,15 @@ img    = load("test/gear.png")
 region = binarize(img, px -> px < 0.9)
 blob   = argmax(area, components(region))
 
-l, t, r, b = bounds(blob)              # math y-axis convention: t > b
-y1, y2     = min(t, b), max(t, b)      # row range for image-array indexing
+l, t, r, b = bounds(blob)              # (left, top, right, bottom), top < bottom
 cc, cr     = centroid(blob)            # area-weighted centre (column, row)
 
 out = RGB.(img .* 0.4)
 for run in blob.runs, row in run.rows
     out[row, run.column] = RGB(1, 1, 1)
 end
-out[y1,    l:r] .= RGB(0, 1, 0); out[y2,    l:r] .= RGB(0, 1, 0)
-out[y1:y2, l]   .= RGB(0, 1, 0); out[y1:y2, r]   .= RGB(0, 1, 0)
+out[t,   l:r] .= RGB(0, 1, 0); out[b,   l:r] .= RGB(0, 1, 0)
+out[t:b, l]   .= RGB(0, 1, 0); out[t:b, r]   .= RGB(0, 1, 0)
 ci, ri = round.(Int, (cc, cr))
 for d in -4:4
     out[ri,     ci + d] = RGB(1, 0, 0)
