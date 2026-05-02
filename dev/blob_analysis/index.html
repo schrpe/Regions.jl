@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Blob Analysis · Regions.jl</title><link rel="canonical" href="https://schrpe.github.io/Regions.jl/blob_analysis/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Regions.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../introduction/">Introduction</a></li><li><a class="tocitem" href="../set_operations/">Set Operations</a></li><li><a class="tocitem" href="../morphology/">Morphological Operations</a></li><li class="is-active"><a class="tocitem" href>Blob Analysis</a><ul class="internal"><li><a class="tocitem" href="#Connected-Components"><span>Connected Components</span></a></li><li><a class="tocitem" href="#Basic-Shape-Features"><span>Basic Shape Features</span></a></li><li><a class="tocitem" href="#Centroid-and-Equivalent-Ellipse"><span>Centroid and Equivalent Ellipse</span></a></li><li><a class="tocitem" href="#Perimeter-and-Compactness"><span>Perimeter and Compactness</span></a></li><li><a class="tocitem" href="#Convex-Hull-and-Shape-Convexity"><span>Convex Hull and Shape Convexity</span></a></li><li><a class="tocitem" href="#Feret-Diameters"><span>Feret Diameters</span></a></li><li><a class="tocitem" href="#Hole-Features"><span>Hole Features</span></a></li><li><a class="tocitem" href="#Gear-Analysis-Example"><span>Gear Analysis Example</span></a></li></ul></li><li><a class="tocitem" href="../region_as_domain/">Region as Domain</a></li><li><a class="tocitem" href="../comparison/">Comparison</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Blob Analysis</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Blob Analysis</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/schrpe/Regions.jl/blob/master/docs/src/blob_analysis.md#" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Blob-Analysis"><a class="docs-heading-anchor" href="#Blob-Analysis">Blob Analysis</a><a id="Blob-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Blob-Analysis" title="Permalink"></a></h1><p>Blob analysis (connected-component analysis) takes a binary region and breaks it into individual objects, then measures shape properties of each. The typical pipeline is:</p><ol><li><strong>Segment</strong> the image into a binary region (<code>binarize</code>).</li><li><strong>Split</strong> the region into connected blobs (<code>components</code>).</li><li><strong>Measure</strong> each blob with feature functions (<code>area</code>, <code>centroid</code>, <code>equivalent_ellipse</code>, …).</li></ol><h2 id="Connected-Components"><a class="docs-heading-anchor" href="#Connected-Components">Connected Components</a><a id="Connected-Components-1"></a><a class="docs-heading-anchor-permalink" href="#Connected-Components" title="Permalink"></a></h2><p><code>components(region, dx, dy)</code> returns a <code>Vector{Region}</code> — one element per connected blob. Two runs are considered part of the same blob when their column distance is at most <code>dx</code> and their row gap is at most <code>dy</code>. The defaults <code>dx = dy = 1</code> implement standard 8-connected labelling; larger values bridge small gaps between nearby objects.</p><pre><code class="language-julia-repl">julia&gt; b1 = region_from_circle(-20, 0, 5);
+
+julia&gt; b2 = region_from_circle(0, 0, 5);
+
+julia&gt; b3 = region_from_circle(20, 0, 5);
+
+julia&gt; three_blobs = union(union(b1, b2), b3);
+
+julia&gt; comps = components(three_blobs);
+
+julia&gt; length(comps)                              # three separated circles
+3
+
+julia&gt; all(c -&gt; area(c) == 81, comps)             # all three circles have equal area
+true</code></pre><p>The <code>dx</code> parameter bridges horizontal gaps. Two boxes separated by a 3-column gap are two separate blobs at the default <code>dx = 1</code>, but merge into one when <code>dx = 4</code>:</p><pre><code class="language-julia-repl">julia&gt; box_a = region_from_box(0, 5, 3, 0);      # columns 0–3, rows 0–5
+
+julia&gt; box_b = region_from_box(7, 5, 10, 0);     # columns 7–10, rows 0–5
+
+julia&gt; two_boxes = union(box_a, box_b);
+
+julia&gt; length(components(two_boxes))              # gap of 3 columns exceeds dx=1
+2
+
+julia&gt; length(components(two_boxes, unsigned(4), unsigned(0)))   # dx=4 bridges the gap
+1</code></pre><h2 id="Basic-Shape-Features"><a class="docs-heading-anchor" href="#Basic-Shape-Features">Basic Shape Features</a><a id="Basic-Shape-Features-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Shape-Features" title="Permalink"></a></h2><p>Each connected component is a <code>Region</code>, so all feature functions apply directly.</p><p><code>area</code> returns the pixel count. <code>width</code> and <code>height</code> return the column and row extent of the bounding box. <code>bounds_center</code> returns the midpoint of the bounding box as <code>(column, row)</code>. <code>aspect_ratio</code> returns <code>width / height</code>.</p><pre><code class="language-julia-repl">julia&gt; blob = region_from_box(0, 1, 9, 0);       # 10-wide × 2-tall rectangle
+
+julia&gt; area(blob)
+20
+
+julia&gt; width(blob)
+10
+
+julia&gt; height(blob)
+2
+
+julia&gt; bounds_center(blob)
+(4.5, 0.5)
+
+julia&gt; aspect_ratio(blob)
+5.0</code></pre><h2 id="Centroid-and-Equivalent-Ellipse"><a class="docs-heading-anchor" href="#Centroid-and-Equivalent-Ellipse">Centroid and Equivalent Ellipse</a><a id="Centroid-and-Equivalent-Ellipse-1"></a><a class="docs-heading-anchor-permalink" href="#Centroid-and-Equivalent-Ellipse" title="Permalink"></a></h2><p><code>centroid(r)</code> returns the area-weighted centre <code>(column, row)</code>. Unlike <code>bounds_center</code> it is pulled toward dense parts of the region, not just the bounding-box midpoint.</p><p><code>equivalent_ellipse(r)</code> fits the ellipse that has the same area, centroid, and second-order moments as the region. It returns a named tuple <code>(center, semi_axes, angle)</code> where <code>semi_axes = (major, minor)</code> and <code>angle</code> is in radians from the column axis toward the row axis. The equivalent ellipse is useful for estimating the orientation and elongation of a blob.</p><pre><code class="language-julia-repl">julia&gt; elong_box = region_from_box(0, 1, 9, -1);   # 10-wide × 3-tall, centred at row 0
+
+julia&gt; centroid(elong_box)
+(4.5, 0.0)
+
+julia&gt; el = equivalent_ellipse(elong_box);
+
+julia&gt; el.center
+(4.5, 0.0)
+
+julia&gt; round(el.semi_axes[1]; digits=4)             # major (horizontal) half-axis
+5.7446
+
+julia&gt; round(el.angle; digits=4)                    # 0 — aligned with column axis
+0.0</code></pre><h2 id="Perimeter-and-Compactness"><a class="docs-heading-anchor" href="#Perimeter-and-Compactness">Perimeter and Compactness</a><a id="Perimeter-and-Compactness-1"></a><a class="docs-heading-anchor-permalink" href="#Perimeter-and-Compactness" title="Permalink"></a></h2><p><code>perimeter(r)</code> counts exposed 4-connected boundary edges (each edge has length 1). <code>compactness(r)</code> normalises the perimeter by the area using the isoperimetric ratio <code>P² / (4π·A)</code>, which equals 1 for a perfect circle and grows for more irregular or elongated shapes.</p><pre><code class="language-julia-repl">julia&gt; c5 = region_from_circle(0, 0, 5);
+
+julia&gt; perimeter(c5)
+44.0
+
+julia&gt; round(compactness(c5); digits=4)             # close to 1 — nearly circular
+1.902
+
+julia&gt; round(compactness(region_from_box(-2, 2, 2, -2)); digits=4)  # 5×5 square
+1.2732</code></pre><h2 id="Convex-Hull-and-Shape-Convexity"><a class="docs-heading-anchor" href="#Convex-Hull-and-Shape-Convexity">Convex Hull and Shape Convexity</a><a id="Convex-Hull-and-Shape-Convexity-1"></a><a class="docs-heading-anchor-permalink" href="#Convex-Hull-and-Shape-Convexity" title="Permalink"></a></h2><p><code>convex_hull(r)</code> returns the convex hull of the region as an ordered list of half-integer pixel-corner vertices. <code>convex_area</code> and <code>convex_perimeter</code> measure its area and perimeter. <code>convexity</code> returns <code>area / convex_area</code> (1 for convex shapes, &lt; 1 when the shape has concavities). <code>perforation</code> returns the complementary fraction <code>(convex_area − area) / convex_area</code>.</p><pre><code class="language-julia-repl">julia&gt; cross = Region([Run(-2, 0:0), Run(-1, 0:0), Run(0, -2:2), Run(1, 0:0), Run(2, 0:0)]);
+
+julia&gt; area(cross)
+9
+
+julia&gt; convex_area(cross)
+17.0
+
+julia&gt; round(convexity(cross); digits=4)            # 9/17 — arms create deep concavities
+0.5294
+
+julia&gt; round(perforation(cross); digits=4)          # 47% of convex hull not filled by region
+0.4706</code></pre><h2 id="Feret-Diameters"><a class="docs-heading-anchor" href="#Feret-Diameters">Feret Diameters</a><a id="Feret-Diameters-1"></a><a class="docs-heading-anchor-permalink" href="#Feret-Diameters" title="Permalink"></a></h2><p><code>feret_diameters(r)</code> returns <code>(min_feret, max_feret)</code> — the minimum and maximum caliper widths obtained by rotating calipers on the convex hull. The minimum Feret diameter is the narrowest gap a physical caliper could pass through. The maximum Feret diameter is the longest diagonal of the convex hull.</p><pre><code class="language-julia-repl">julia&gt; blob_wide = region_from_box(0, 1, 9, 0);    # 10-wide × 2-tall
+
+julia&gt; mn_f, mx_f = feret_diameters(blob_wide);
+
+julia&gt; mn_f                                         # 2 px — fits through the short dimension
+2.0
+
+julia&gt; round(mx_f; digits=3)                        # corner-to-corner diagonal
+10.198</code></pre><h2 id="Hole-Features"><a class="docs-heading-anchor" href="#Hole-Features">Hole Features</a><a id="Hole-Features-1"></a><a class="docs-heading-anchor-permalink" href="#Hole-Features" title="Permalink"></a></h2><p><code>number_of_holes(r)</code> counts enclosed background components (the same regions that <code>holes(r)</code> returns). <code>area_of_holes(r)</code> sums their pixel areas. Both are zero for simply-connected (hole-free) regions.</p><pre><code class="language-julia-repl">julia&gt; blob_frame = difference(region_from_box(-3, 3, 3, -3),
+                               region_from_box(-1, 1, 1, -1));  # 7×7 frame with 3×3 hole
+
+julia&gt; number_of_holes(blob_frame)
+1
+
+julia&gt; area_of_holes(blob_frame)
+9</code></pre><h2 id="Gear-Analysis-Example"><a class="docs-heading-anchor" href="#Gear-Analysis-Example">Gear Analysis Example</a><a id="Gear-Analysis-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Gear-Analysis-Example" title="Permalink"></a></h2><p>The gear is one connected region (<code>components</code> returns a single element) with a rich toothed boundary. Strong erosion with a large disk SE shrinks every tooth to an isolated stub and separates the stubs. Filtering by minimum area removes erosion artefacts; the remaining blobs are the individual teeth. Shape features then characterise each tooth:</p><pre><code class="language-julia">img  = load(&quot;test/gear.png&quot;)
+gear = binarize(img, px -&gt; px &lt; 0.9)
+
+println(&quot;area:       &quot;, area(gear))             # 100431
+println(&quot;holes:      &quot;, number_of_holes(gear))  # 9 — spokes + shaft bore
+println(&quot;hole area:  &quot;, area_of_holes(gear))    # 58110 — enclosed voids
+println(&quot;convexity:  &quot;, round(convexity(gear); digits=3))  # 0.562 — teeth cut deep concavities
+println(&quot;feret:      &quot;, round.(feret_diameters(gear); digits=1))  # (473.1, 481.0) — outer diameter
+
+se18        = region_from_circle(0, 0, 18)
+eroded18    = erosion(gear, se18)               # shrink until teeth disconnect
+tooth_comps = components(eroded18)
+teeth       = filter(c -&gt; area(c) &gt;= 200, tooth_comps)  # drop sub-pixel artefacts
+println(&quot;teeth:      &quot;, length(teeth))          # 7 teeth visible in the image quadrant
+
+for t in sort(teeth, by=area, rev=true)
+    cen = centroid(t)
+    el  = equivalent_ellipse(t)
+    println(&quot;  area=$(area(t))  centroid=($(round(Int,cen[1])), $(round(Int,cen[2])))&quot;,
+            &quot;  major=$(round(el.semi_axes[1]; digits=1))&quot;)
+end</code></pre><p>The <code>convexity</code> of 0.56 quantifies what is visible in the image: only about 56% of the gear&#39;s convex hull is actually filled, with the remainder being the inter-tooth concavities. The 9 holes — 4 spoke cavities and the central shaft bore — account for more than half the gear&#39;s own pixel area (58 110 out of 100 431 pixels).</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../morphology/">« Morphological Operations</a><a class="docs-footer-nextpage" href="../region_as_domain/">Region as Domain »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 2 May 2026 08:37">Saturday 2 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

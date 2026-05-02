@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Morphological Operations · Regions.jl</title><link rel="canonical" href="https://schrpe.github.io/Regions.jl/morphology/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Regions.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../introduction/">Introduction</a></li><li><a class="tocitem" href="../set_operations/">Set Operations</a></li><li class="is-active"><a class="tocitem" href>Morphological Operations</a><ul class="internal"><li><a class="tocitem" href="#Mathematical-foundation"><span>Mathematical foundation</span></a></li><li><a class="tocitem" href="#Erosion"><span>Erosion</span></a></li><li><a class="tocitem" href="#Dilation"><span>Dilation</span></a></li><li><a class="tocitem" href="#Opening"><span>Opening</span></a></li><li><a class="tocitem" href="#Closing"><span>Closing</span></a></li><li><a class="tocitem" href="#Morphological-Gradient"><span>Morphological Gradient</span></a></li><li><a class="tocitem" href="#Inner-and-Outer-Boundary"><span>Inner and Outer Boundary</span></a></li><li><a class="tocitem" href="#Holes-and-fill_holes"><span>Holes and fill_holes</span></a></li><li><a class="tocitem" href="#Gear-Example"><span>Gear Example</span></a></li></ul></li><li><a class="tocitem" href="../blob_analysis/">Blob Analysis</a></li><li><a class="tocitem" href="../region_as_domain/">Region as Domain</a></li><li><a class="tocitem" href="../comparison/">Comparison</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Morphological Operations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Morphological Operations</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/schrpe/Regions.jl/blob/master/docs/src/morphology.md#" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Morphological-Operations"><a class="docs-heading-anchor" href="#Morphological-Operations">Morphological Operations</a><a id="Morphological-Operations-1"></a><a class="docs-heading-anchor-permalink" href="#Morphological-Operations" title="Permalink"></a></h1><p>Morphological operations transform a region using a second region called a <strong>structuring element</strong> (SE). The SE acts as a probe that is slid across every pixel; its shape and size set the spatial scale at which features are grown, shrunk, or detected.</p><p><strong>Structuring elements must be centred on the origin.</strong> Two common choices:</p><table><tr><th style="text-align: right">SE</th><th style="text-align: right">Construction</th><th style="text-align: right">Character</th></tr><tr><td style="text-align: right">Disk</td><td style="text-align: right"><code>region_from_circle(0, 0, r)</code></td><td style="text-align: right">Isotropic — treats all directions equally</td></tr><tr><td style="text-align: right">Square</td><td style="text-align: right"><code>region_from_box(-r, r, r, -r)</code></td><td style="text-align: right">Axis-aligned — sharper corners, faster</td></tr></table><h2 id="Mathematical-foundation"><a class="docs-heading-anchor" href="#Mathematical-foundation">Mathematical foundation</a><a id="Mathematical-foundation-1"></a><a class="docs-heading-anchor-permalink" href="#Mathematical-foundation" title="Permalink"></a></h2><p>All operations on this page are built from two primitives — the <strong>Minkowski sum</strong> and the <strong>Minkowski difference</strong> of two sets <span>$A$</span> and <span>$B$</span>:</p><p class="math-container">\[A \oplus B = \{ a + b \mid a \in A,\, b \in B \},\qquad
+A \ominus B = \{ c \mid B + c \subseteq A \}.\]</p><p><code>dilation(A, B)</code> is <code>A ⊕ B</code> and <code>erosion(A, B)</code> is <code>A ⊖ B</code>; opening, closing, gradients, and boundaries are all defined as compositions of these two. The internal helpers <code>Regions._minkowski_addition</code> and <code>Regions._minkowski_subtraction</code> implement the primitives on <code>Region</code>s. Because the formulas treat <code>A</code> and <code>B</code> symmetrically, the structuring element can be any region — disks, boxes, polygons, line segments, even point clouds.</p><h2 id="Erosion"><a class="docs-heading-anchor" href="#Erosion">Erosion</a><a id="Erosion-1"></a><a class="docs-heading-anchor-permalink" href="#Erosion" title="Permalink"></a></h2><p><code>erosion(a, se)</code> shrinks <code>a</code>. A pixel is kept only when the SE, placed at that pixel, fits entirely inside <code>a</code>. Protrusions narrower than the SE are trimmed away.</p><pre><code class="language-julia-repl">julia&gt; region5 = region_from_box(-3, 3, 3, -3);  # 7×7 = 49 pixels
+
+julia&gt; se_sq   = region_from_box(-1, 1, 1, -1);  # 3×3 square SE
+
+julia&gt; e = erosion(region5, se_sq);
+
+julia&gt; area(e)                                    # shrinks to 5×5
+25
+
+julia&gt; contains(e, -2, 0)                        # 1 pixel inside the original boundary
+true
+
+julia&gt; contains(e, -3, 0)                        # original boundary pixel — removed
+false</code></pre><p>A disk SE erodes isotropically. <code>erosion(region_from_circle(0,0,r), region_from_circle(0,0,s))</code> gives <code>region_from_circle(0,0,r-s)</code> when <code>r &gt; s</code>.</p><h2 id="Dilation"><a class="docs-heading-anchor" href="#Dilation">Dilation</a><a id="Dilation-1"></a><a class="docs-heading-anchor-permalink" href="#Dilation" title="Permalink"></a></h2><p><code>dilation(a, se)</code> grows <code>a</code>. A pixel is added for every pixel of the SE placed at every pixel of <code>a</code> — equivalently, every point reachable by sliding the SE over the region.</p><pre><code class="language-julia-repl">julia&gt; small = region_from_box(-1, 1, 1, -1);   # 3×3
+
+julia&gt; d = dilation(small, se_sq);              # 3×3 dilated by 3×3
+
+julia&gt; area(d)                                  # grows to 5×5
+25
+
+julia&gt; contains(d, 2, 0)                        # pixel added beyond original boundary
+true</code></pre><p>Dilation is the dual of erosion: <code>dilation(a, se) == invert(erosion(invert(a), se))</code>.</p><div class="admonition is-success"><header class="admonition-header">Chaining erosions and dilations</header><div class="admonition-body"><p>For convex SEs centred on the origin, two successive erosions with a 3×3 box give the same result as one erosion with a 5×5 box, because erosion satisfies <span>$(A \ominus B) \ominus B = A \ominus (B \oplus B)$</span>. The same identity holds for dilation. This lets you build a large effective SE from cheap repeated applications of a small one — handy when you want a tunable amount of erosion without re-creating SEs. The identity does <strong>not</strong> hold for non-convex or off-centre SEs in general.</p></div></div><h2 id="Opening"><a class="docs-heading-anchor" href="#Opening">Opening</a><a id="Opening-1"></a><a class="docs-heading-anchor-permalink" href="#Opening" title="Permalink"></a></h2><p><code>opening(a, se)</code> = erosion followed by dilation with the same SE. It removes foreground features (isolated pixels, thin protrusions) smaller than the SE while leaving larger structures nearly unchanged. The result is always a <strong>subset</strong> of <code>a</code>.</p><pre><code class="language-julia-repl">julia&gt; opening(region5, se_sq) == region5       # box survives — no features smaller than SE
+true
+
+julia&gt; isempty(opening(Region([Run(0, 0:0)]), se_sq))  # isolated pixel is removed
+true</code></pre><p>Opening is idempotent: applying it twice gives the same result as applying it once.</p><h2 id="Closing"><a class="docs-heading-anchor" href="#Closing">Closing</a><a id="Closing-1"></a><a class="docs-heading-anchor-permalink" href="#Closing" title="Permalink"></a></h2><p><code>closing(a, se)</code> = dilation followed by erosion. It fills background features (narrow gaps, small holes) smaller than the SE while leaving the overall shape nearly unchanged. The result always <strong>contains</strong> <code>a</code> as a subset.</p><pre><code class="language-julia-repl">julia&gt; gapped = union(region_from_box(-3, 3, -1, -3),   # two bars with a 1-column gap
+                      region_from_box( 1, 3,  3, -3));
+
+julia&gt; area(gapped)                                      # 6 columns × 7 rows, gap missing
+42
+
+julia&gt; c3 = closing(gapped, se_sq);
+
+julia&gt; contains(c3, 0, 0)                               # gap at column 0 is filled
+true
+
+julia&gt; area(c3)                                         # gap plus rounded corners added
+49</code></pre><h2 id="Morphological-Gradient"><a class="docs-heading-anchor" href="#Morphological-Gradient">Morphological Gradient</a><a id="Morphological-Gradient-1"></a><a class="docs-heading-anchor-permalink" href="#Morphological-Gradient" title="Permalink"></a></h2><p><code>morphological_gradient(a, se)</code> = <code>difference(dilation(a,se), erosion(a,se))</code>. The result is a ring that straddles the boundary of <code>a</code>, extending one SE radius both inside and outside.</p><pre><code class="language-julia-repl">julia&gt; grad = morphological_gradient(region5, se_sq);
+
+julia&gt; area(grad)                                       # 9×9 minus 5×5
+56
+
+julia&gt; contains(grad, -3, 0)                           # boundary pixel — in the ring
+true
+
+julia&gt; contains(grad, 0, 0)                            # interior pixel — not in the ring
+false</code></pre><h2 id="Inner-and-Outer-Boundary"><a class="docs-heading-anchor" href="#Inner-and-Outer-Boundary">Inner and Outer Boundary</a><a id="Inner-and-Outer-Boundary-1"></a><a class="docs-heading-anchor-permalink" href="#Inner-and-Outer-Boundary" title="Permalink"></a></h2><p><code>inner_boundary</code> and <code>outer_boundary</code> use a fixed 3×3 square SE and split the gradient into the layer that lies <em>inside</em> versus <em>outside</em> the region.</p><pre><code class="language-julia-repl">julia&gt; ib = inner_boundary(region5);
+
+julia&gt; area(ib)                                        # one pixel ring inside
+24
+
+julia&gt; contains(ib, -3, 0)                            # outermost layer of region5
+true
+
+julia&gt; contains(ib, -2, 0)                            # second layer — not inner boundary
+false
+
+julia&gt; ob = outer_boundary(region5);
+
+julia&gt; area(ob)                                        # one pixel ring outside
+32
+
+julia&gt; contains(ob, -4, 0)                            # first pixel beyond boundary
+true
+
+julia&gt; contains(ob, -3, 0)                            # the boundary itself — not outer boundary
+false</code></pre><h2 id="Holes-and-fill_holes"><a class="docs-heading-anchor" href="#Holes-and-fill_holes">Holes and fill_holes</a><a id="Holes-and-fill_holes-1"></a><a class="docs-heading-anchor-permalink" href="#Holes-and-fill_holes" title="Permalink"></a></h2><p><code>holes(a)</code> returns all enclosed background regions — connected components of the background inside the bounding box that do not touch any edge. <code>fill_holes(a)</code> fills them all.</p><pre><code class="language-julia-repl">julia&gt; box_frame = difference(region_from_box(-3, 3, 3, -3),
+                              region_from_box(-1, 1, 1, -1));  # 7×7 box with 3×3 hole
+
+julia&gt; hs = holes(box_frame);
+
+julia&gt; length(hs)                                         # one enclosed hole
+1
+
+julia&gt; contains(hs[1], 0, 0)                             # the hole contains the origin
+true
+
+julia&gt; filled_box = fill_holes(box_frame);
+
+julia&gt; area(filled_box)                                   # hole filled — back to 7×7
+49
+
+julia&gt; contains(filled_box, 0, 0) &amp;&amp; contains(filled_box, -3, 0)
+true</code></pre><h2 id="Gear-Example"><a class="docs-heading-anchor" href="#Gear-Example">Gear Example</a><a id="Gear-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Gear-Example" title="Permalink"></a></h2><p>Applying morphological operations to the segmented gear illustrates each operation&#39;s effect at the scale of the gear teeth (radius-5 disk SE for erosion/dilation, radius-8 for opening/closing):</p><pre><code class="language-julia">se5 = region_from_circle(0, 0, 5)    # disk SE, radius 5
+se8 = region_from_circle(0, 0, 8)    # disk SE, radius 8
+se2 = region_from_circle(0, 0, 2)    # disk SE, radius 2
+
+eroded  = erosion(gear, se5)          # teeth shaved inward by 5 px
+dilated = dilation(gear, se5)         # teeth grown outward by 5 px
+opened  = opening(gear, se8)          # small protrusions removed
+closed  = closing(gear, se8)          # narrow inter-tooth gaps bridged
+grad    = morphological_gradient(gear, se2)   # boundary ring
+filled  = fill_holes(gear)            # spoke voids and shaft hole filled</code></pre><table><tr><th style="text-align: center">Original</th><th style="text-align: center">Eroded (r = 5)</th><th style="text-align: center">Dilated (r = 5)</th></tr><tr><td style="text-align: center"><img src="../gear_full.png" alt="Original gear"/></td><td style="text-align: center"><img src="../gear_eroded.png" alt="Eroded gear"/></td><td style="text-align: center"><img src="../gear_dilated.png" alt="Dilated gear"/></td></tr></table><table><tr><th style="text-align: center">Opened (r = 8)</th><th style="text-align: center">Closed (r = 8)</th><th style="text-align: center">Gradient (r = 2)</th></tr><tr><td style="text-align: center"><img src="../gear_opened.png" alt="Opened gear"/></td><td style="text-align: center"><img src="../gear_closed.png" alt="Closed gear"/></td><td style="text-align: center"><img src="../gear_gradient.png" alt="Morphological gradient"/></td></tr></table><table><tr><th style="text-align: center">Holes filled</th></tr><tr><td style="text-align: center"><img src="../gear_filled.png" alt="Holes filled"/></td></tr></table><p>The gradient image traces every edge in the gear — outer teeth profile, spoke edges, and the shaft hole — as a thin white ring on the darkened original. The filled image shows the gear outline with all interior voids removed: only the teeth profile remains.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../set_operations/">« Set Operations</a><a class="docs-footer-nextpage" href="../blob_analysis/">Blob Analysis »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 2 May 2026 08:36">Saturday 2 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

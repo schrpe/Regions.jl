@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Set Operations · Regions.jl</title><link rel="canonical" href="https://schrpe.github.io/Regions.jl/set_operations/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">Regions.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../introduction/">Introduction</a></li><li class="is-active"><a class="tocitem" href>Set Operations</a><ul class="internal"><li><a class="tocitem" href="#Union"><span>Union</span></a></li><li><a class="tocitem" href="#Intersection"><span>Intersection</span></a></li><li><a class="tocitem" href="#Difference"><span>Difference</span></a></li><li><a class="tocitem" href="#Combining-Operations"><span>Combining Operations</span></a></li><li><a class="tocitem" href="#Gear-Example"><span>Gear Example</span></a></li></ul></li><li><a class="tocitem" href="../morphology/">Morphological Operations</a></li><li><a class="tocitem" href="../blob_analysis/">Blob Analysis</a></li><li><a class="tocitem" href="../region_as_domain/">Region as Domain</a></li><li><a class="tocitem" href="../comparison/">Comparison</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Set Operations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Set Operations</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/schrpe/Regions.jl/blob/master/docs/src/set_operations.md#" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Set-Operations"><a class="docs-heading-anchor" href="#Set-Operations">Set Operations</a><a id="Set-Operations-1"></a><a class="docs-heading-anchor-permalink" href="#Set-Operations" title="Permalink"></a></h1><p>The three classical set operations — <code>union</code>, <code>intersection</code>, and <code>difference</code> — are the primary tools for combining regions. Because a region is a set of discrete pixel coordinates, these operations have exactly the meaning from mathematical set theory: each pixel either belongs or does not belong to a region, and the operations determine membership in the result accordingly.</p><p>All three operations handle complement regions transparently via De Morgan&#39;s laws. <code>union(invert(a), invert(b))</code> returns <code>invert(intersection(a, b))</code>, and so on, so regular and complement regions can be freely mixed without special-casing.</p><h2 id="Union"><a class="docs-heading-anchor" href="#Union">Union</a><a id="Union-1"></a><a class="docs-heading-anchor-permalink" href="#Union" title="Permalink"></a></h2><p><code>union(a, b)</code> returns every pixel that belongs to <em>at least one</em> of the two regions — the pixel-wise logical OR. Pixels exclusive to <code>a</code>, pixels exclusive to <code>b</code>, and pixels in the overlap all appear in the result.</p><pre><code class="language-julia-repl">julia&gt; a = region_from_box(0, 3, 4, 0);  # 5 columns × 4 rows = 20 pixels
+
+julia&gt; b = region_from_box(3, 5, 7, 2);  # 5 columns × 4 rows = 20 pixels, partly overlapping
+
+julia&gt; u = union(a, b);
+
+julia&gt; area(u)                            # 20 + 20 − 4 pixels of overlap
+36
+
+julia&gt; contains(u, 1, 1)                 # inside a only
+true
+
+julia&gt; contains(u, 6, 4)                 # inside b only
+true
+
+julia&gt; contains(u, 4, 3)                 # inside both
+true</code></pre><p><code>union</code> is commutative (<code>union(a,b) == union(b,a)</code>) and associative, so combining more than two regions with <code>union</code> can be done in any order.</p><p>Typical uses: merging two separately segmented foreground regions, filling the gap between two adjacent blobs, or stitching together partial results from parallel segmentation passes.</p><h2 id="Intersection"><a class="docs-heading-anchor" href="#Intersection">Intersection</a><a id="Intersection-1"></a><a class="docs-heading-anchor-permalink" href="#Intersection" title="Permalink"></a></h2><p><code>intersection(a, b)</code> keeps only pixels that are present in <em>both</em> regions simultaneously — the pixel-wise logical AND. Pixels that belong exclusively to <code>a</code> or exclusively to <code>b</code> are dropped.</p><pre><code class="language-julia-repl">julia&gt; i = intersection(a, b);
+
+julia&gt; area(i)                            # only the 2×2 overlap at columns 3–4, rows 2–3
+4
+
+julia&gt; contains(i, 4, 3)                 # in both a and b
+true
+
+julia&gt; contains(i, 1, 1)                 # in a only — excluded
+false</code></pre><p>A common pattern is <em>masking</em>: intersecting a segmented region with a geometrically defined region of interest (a circle, a box, a polygon) restricts analysis to a specific area without re-running segmentation.</p><pre><code class="language-julia-repl">julia&gt; roi = region_from_circle(2, 2, 3);  # circular region of interest
+
+julia&gt; masked = intersection(u, roi);      # restrict the union result to the ROI
+
+julia&gt; area(masked) &lt;= area(u)
+true</code></pre><h2 id="Difference"><a class="docs-heading-anchor" href="#Difference">Difference</a><a id="Difference-1"></a><a class="docs-heading-anchor-permalink" href="#Difference" title="Permalink"></a></h2><p><code>difference(a, b)</code> returns all pixels of <code>a</code> that are <em>not</em> in <code>b</code>. The operation is asymmetric: swapping the operands generally yields a different result.</p><pre><code class="language-julia-repl">julia&gt; d = difference(a, b);
+
+julia&gt; area(d)                            # 20 − 4 overlapping pixels
+16
+
+julia&gt; contains(d, 1, 1)                 # in a, not in b
+true
+
+julia&gt; contains(d, 4, 3)                 # in both — excluded
+false
+
+julia&gt; area(difference(b, a))            # subtract a from b instead
+16</code></pre><p>Difference is used to punch holes in a region (subtract a reference shape or a known background area) or to isolate the part of one region not covered by another.</p><h2 id="Combining-Operations"><a class="docs-heading-anchor" href="#Combining-Operations">Combining Operations</a><a id="Combining-Operations-1"></a><a class="docs-heading-anchor-permalink" href="#Combining-Operations" title="Permalink"></a></h2><p>The three operations compose freely. A common idiom is to build a complex shape from simple geometric primitives by alternating union and difference:</p><pre><code class="language-julia-repl">julia&gt; disk   = region_from_circle(0, 0, 10);
+
+julia&gt; hub    = region_from_circle(0, 0, 3);
+
+julia&gt; notch  = region_from_box(-1, 11, 1, 7);   # rectangular notch at the top
+
+julia&gt; ring_with_notch = difference(difference(disk, hub), notch);
+
+julia&gt; area(ring_with_notch) &lt; area(disk)
+true
+
+julia&gt; !contains(ring_with_notch, 0, 0)           # hub removed
+true
+
+julia&gt; !contains(ring_with_notch, 0, 9)           # notch removed
+true</code></pre><h2 id="Gear-Example"><a class="docs-heading-anchor" href="#Gear-Example">Gear Example</a><a id="Gear-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Gear-Example" title="Permalink"></a></h2><p>Building on the segmentation from the previous section, set operations refine the gear region into analysis-ready sub-regions. A hub circle and an outer boundary circle are created geometrically and combined with the segmented gear via <code>difference</code> and <code>intersection</code>:</p><pre><code class="language-julia">using FileIO, ImageIO, ImageMagick
+
+img  = load(&quot;gear.png&quot;)
+gear = binarize(img, px -&gt; px &lt; 0.9)
+
+# Approximate center and radii determined from the image dimensions (pixels)
+cx, cy       = 256, 256
+hub_radius   = 28
+outer_radius = 240
+
+# Remove the solid center hub — what remains are the gear teeth and body
+hub        = region_from_circle(cx, cy, hub_radius)
+teeth_only = difference(gear, hub)
+
+# Trim any noise or partial pixels outside the outer gear boundary
+outline       = region_from_circle(cx, cy, outer_radius)
+teeth_trimmed = intersection(teeth_only, outline)
+
+# Isolate the hub area separately for independent measurement
+hub_region = intersection(gear, hub)</code></pre><p>The three resulting regions — <code>teeth_trimmed</code>, <code>hub_region</code>, and the full <code>gear</code> — can now be passed independently to area measurement, moment computation, or morphological analysis.</p><table><tr><th style="text-align: center">Full gear</th><th style="text-align: center">Teeth only</th><th style="text-align: center">Hub only</th></tr><tr><td style="text-align: center"><img src="../gear_full.png" alt="Full gear region"/></td><td style="text-align: center"><img src="../gear_teeth.png" alt="Teeth region"/></td><td style="text-align: center"><img src="../gear_hub.png" alt="Hub region"/></td></tr></table><p>Each image shows the segmented region in white against the darkened original photograph. The teeth image has the inner hub circle removed via <code>difference</code>; the hub image retains only the inner disc via <code>intersection</code>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../introduction/">« Introduction</a><a class="docs-footer-nextpage" href="../morphology/">Morphological Operations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 2 May 2026 08:36">Saturday 2 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
