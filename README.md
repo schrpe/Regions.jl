@@ -1,8 +1,10 @@
 # Regions
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://schrpe.github.io/Regions.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://schrpe.github.io/Regions.jl/dev)
 [![Tests](https://github.com/schrpe/Regions.jl/actions/workflows/Tests.yml/badge.svg)](https://github.com/schrpe/Regions.jl/actions/workflows/Tests.yml)
 [![Documentation](https://github.com/schrpe/Regions.jl/actions/workflows/Documentation.yml/badge.svg)](https://github.com/schrpe/Regions.jl/actions/workflows/Documentation.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
 
 Regions.jl defines a set of types and functions that model a discrete 2-dimensional region concept.
@@ -46,3 +48,4 @@ save("gear_example.png", out)
 ```
 
 ![Gear with bounding box and centroid](docs/src/gear_example.png)
+
