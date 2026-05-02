@@ -1012,7 +1012,7 @@ version = "0.3.2"
 deps = ["Images"]
 path = ".."
 uuid = "4e3eb3bd-530d-473f-987b-017f501eadde"
-version = "0.3.1"
+version = "0.4.2"
 
 [[Requires]]
 deps = ["UUIDs"]
