@@ -1,0 +1,46 @@
+# CompatHelper — automated [compat] maintenance.
+#
+# Once a day, this workflow scans the General registry for newer versions
+# of every dependency listed in Project.toml (and docs/Project.toml).
+# When one appears that isn't already covered by the matching [compat]
+# entry, CompatHelper opens a PR widening that entry — for example,
+#   ColorTypes = "0.12"
+# becomes
+#   ColorTypes = "0.12, 0.13"
+# Review the PR, trigger Tests.yml against the branch, merge if green,
+# then bump the patch version in Project.toml and release.
+#
+# Requires the DOCUMENTER_KEY repo secret (the same SSH deploy key used
+# by Documentation.yml and TagBot.yml). See MAINTAINERS.md for setup.
+
+name: CompatHelper
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # daily at 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  CompatHelper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install CompatHelper
+        run: |
+          import Pkg
+          name = "CompatHelper"
+          uuid = "aa819f21-2bde-4658-8897-bab36330d9b7"
+          version = "3"
+          Pkg.add(; name, uuid, version)
+        shell: julia --color=yes {0}
+      - name: Run CompatHelper
+        run: |
+          import CompatHelper
+          CompatHelper.main(; subdirs = ["", "docs"])
+        shell: julia --color=yes {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}
