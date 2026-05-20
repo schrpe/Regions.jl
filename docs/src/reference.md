@@ -46,6 +46,13 @@ Modules = [Regions]
 Pages   = ["point_list.jl"]
 ```
 
+## Region Profiles
+
+```@autodocs
+Modules = [Regions]
+Pages   = ["region_profile.jl"]
+```
+
 ## Index
 
 ```@index
