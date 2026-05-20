@@ -361,4 +361,33 @@
         @test roughness(region_from_circle(0, 0, 50)) > 1.0
     end
 
+    # ── Fiber metrics ────────────────────────────────────────────────────────
+
+    @testset "fiber_length" begin
+        # Single pixel: perimeter = 4 → fiber_length = 2.0
+        @test fiber_length(Region([Run(0, 0:0)])) == 2.0
+        # 3×3 box: perimeter = 12 → fiber_length = 6.0
+        @test fiber_length(region_from_box(0, 0, 2, 2)) == 6.0
+        # Identity: always exactly half the perimeter
+        c = region_from_circle(0, 0, 17)
+        @test fiber_length(c) == 0.5 * perimeter(c)
+        # Translation invariance
+        r = region_from_box(0, 0, 4, 2)
+        @test fiber_length(translate(r, 100, -50)) == fiber_length(r)
+    end
+
+    @testset "fiber_width" begin
+        # Single pixel: max DT = 1 → fiber_width = 2
+        @test fiber_width(Region([Run(0, 0:0)])) == 2.0
+        # 3×3 box: max DT = 2 → fiber_width = 4
+        @test fiber_width(region_from_box(0, 0, 2, 2)) == 4.0
+        # 5×5 box: max DT = 3 → fiber_width = 6
+        @test fiber_width(region_from_box(0, 0, 4, 4)) == 6.0
+        # 3×10 elongated rectangle: max DT = 2 (middle row) → fiber_width = 4
+        @test fiber_width(region_from_box(0, 0, 9, 2)) == 4.0
+        # Translation invariance
+        r = region_from_box(0, 0, 4, 2)
+        @test fiber_width(translate(r, 100, -50)) == fiber_width(r)
+    end
+
 end

@@ -12,5 +12,6 @@ using Test
     include("test_point_list.jl")
     include("test_region_features.jl")
     include("test_region_profile.jl")
+    include("test_region_distance.jl")
 
 end

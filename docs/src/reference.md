@@ -53,6 +53,13 @@ Modules = [Regions]
 Pages   = ["region_profile.jl"]
 ```
 
+## Region Distance Transform
+
+```@autodocs
+Modules = [Regions]
+Pages   = ["region_distance.jl"]
+```
+
 ## Index
 
 ```@index
