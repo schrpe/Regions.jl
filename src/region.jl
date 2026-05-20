@@ -19,6 +19,8 @@ export region_from_line_segment
 export region_from_ellipse
 export region_from_ring
 export region_to_image
+export downsample, upscale, DownsampleRoundingMode
+export RoundNearestMode, CastToIntMode, ShrinkMode, GrowMode
 
 """
     Region
@@ -1067,5 +1069,140 @@ function Base.show(io::IO, mime::MIME"image/png", region::Region)
     if !isempty(region)
         Base.show(io, mime, region_to_image(region, RGBA(0,0,1,0.5)))
     end
+end
+
+
+# Downsample / Upscale
+
+"""
+    DownsampleRoundingMode
+
+Enum that selects how non-integer scaled coordinates are rounded by
+[`downsample`](@ref):
+
+- `RoundNearestMode`: round each coordinate to the nearest integer.
+- `CastToIntMode`: truncate toward zero (matches C++ `(int)` cast).
+- `ShrinkMode`: round each coordinate toward the region's centroid, so the
+  result is a (possibly strict) subset of what nearest-rounding would yield.
+- `GrowMode`: round each coordinate away from the region's centroid, so the
+  result covers at least what nearest-rounding would yield.
+"""
+@enum DownsampleRoundingMode RoundNearestMode CastToIntMode ShrinkMode GrowMode
+
+# Per-coordinate rounding helper. For Shrink/Grow modes the rounding direction
+# depends on which side of `ref` the value lies. `ref` is unused for the other
+# modes and may be any value.
+@inline function _ds_round(v::Float64, mode::DownsampleRoundingMode, ref::Float64)
+    if mode == RoundNearestMode
+        return round(Int, v)
+    elseif mode == CastToIntMode
+        return trunc(Int, v)
+    elseif mode == ShrinkMode
+        return v > ref ? floor(Int, v) : ceil(Int, v)
+    else  # GrowMode
+        return v > ref ? ceil(Int, v) : floor(Int, v)
+    end
+end
+
+
+"""
+    downsample(r::Region, fx::Real, fy::Real, mode=RoundNearestMode) -> Region
+
+Scale a region geometrically by factors `fx` (columns) and `fy` (rows) and
+quantise back to an integer-coordinate region. Both factors must be positive;
+they may be greater than 1 (geometric upsample) or smaller than 1 (geometric
+downsample).
+
+`mode` controls how non-integer scaled coordinates are rounded — see
+[`DownsampleRoundingMode`](@ref). For `ShrinkMode` and `GrowMode` the reference
+point is the region's centroid (computed before scaling), so the rounding
+direction is determined per-coordinate by whether the value sits above or
+below the centroid.
+
+After rounding, the new runs are sorted and packed, so adjacent or
+overlapping runs that result from quantisation are merged into single runs.
+
+```jldoctest
+julia> using Regions
+
+julia> a = region_from_box(0, 0, 9, 9);         # 10×10 box
+
+julia> ds = downsample(a, 0.5, 0.5);
+
+julia> width(ds), height(ds)
+(5, 5)
+
+julia> area(downsample(a, 0.5, 0.5, ShrinkMode)) ≤ area(downsample(a, 0.5, 0.5, GrowMode))
+true
+```
+"""
+function downsample(r::Region, fx::Real, fy::Real, mode::DownsampleRoundingMode=RoundNearestMode)
+    @assert !r.complement && !isempty(r.runs) "downsample requires a non-empty, non-complement region"
+    @assert fx > 0 && fy > 0 "downsample requires positive scale factors"
+
+    fxF, fyF = Float64(fx), Float64(fy)
+
+    cx_ref, cy_ref = 0.0, 0.0
+    if mode == ShrinkMode || mode == GrowMode
+        c = centroid(r)
+        cx_ref = c[1] * fxF
+        cy_ref = c[2] * fyF
+    end
+
+    new_runs = Run[]
+    sizehint!(new_runs, length(r.runs))
+    for run in r.runs
+        new_c = _ds_round(Float64(run.column) * fxF, mode, cx_ref)
+        new_a = _ds_round(Float64(run.rows.start) * fyF, mode, cy_ref)
+        new_b = _ds_round(Float64(run.rows.stop)  * fyF, mode, cy_ref)
+        new_a <= new_b && push!(new_runs, Run(new_c, new_a:new_b))
+    end
+    sort!(new_runs)
+    _pack!(new_runs)
+    return Region(new_runs, false)
+end
+
+
+"""
+    upscale(r::Region, fx::Integer, fy::Integer) -> Region
+
+Upscale a region by integer factors `fx ≥ 1` and `fy ≥ 1`. Every original
+pixel `(c, r)` becomes a block of `fx × fy` pixels at columns
+`c·fx : c·fx + fx - 1` and rows `r·fy : r·fy + fy - 1`, so the result has
+exactly `fx · fy · area(r)` pixels.
+
+After expansion the runs are sorted and packed.
+
+```jldoctest
+julia> using Regions
+
+julia> r = region_from_box(0, 0, 2, 2);   # 3×3 box, area 9
+
+julia> u = upscale(r, 2, 3);
+
+julia> area(u)
+54
+
+julia> width(u), height(u)
+(6, 9)
+```
+"""
+function upscale(r::Region, fx::Integer, fy::Integer)
+    @assert !r.complement "upscale requires a non-complement region"
+    @assert fx >= 1 && fy >= 1 "upscale requires factors ≥ 1"
+
+    new_runs = Run[]
+    sizehint!(new_runs, length(r.runs) * fx)
+    for run in r.runs
+        new_a = Int(run.rows.start) * Int(fy)
+        new_b = (Int(run.rows.stop) + 1) * Int(fy) - 1
+        base_c = Int(run.column) * Int(fx)
+        for dc in 0:(Int(fx) - 1)
+            push!(new_runs, Run(base_c + dc, new_a:new_b))
+        end
+    end
+    sort!(new_runs)
+    _pack!(new_runs)
+    return Region(new_runs, false)
 end
 

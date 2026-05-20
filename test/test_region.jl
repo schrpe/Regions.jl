@@ -794,6 +794,44 @@ end
     @test area(r4) == 4
 end
 
+@testset "downsample / upscale" begin
+    # upscale: round-trip via downsample yields the original region (within rounding)
+    base = region_from_box(0, 0, 5, 3)   # 6×4 box
+    u = upscale(base, 2, 3)
+    @test area(u) == area(base) * 2 * 3
+    @test width(u) == 6 * 2
+    @test height(u) == 4 * 3
+    # All upscaled pixels are inside the new bounding box
+    @test left(u) == 0
+    @test right(u) == 11      # 5*2 + 1
+    @test top(u) == 0
+    @test bottom(u) == 11     # 3*3 + 2
+
+    # Upscale by 1×1 is a no-op
+    @test upscale(base, 1, 1) == base
+
+    # Downsample halves dimensions (round mode by default)
+    big = region_from_box(0, 0, 9, 9)    # 10×10
+    half = downsample(big, 0.5, 0.5)
+    @test width(half) == 5
+    @test height(half) == 5
+
+    # Shrink yields ≤ Grow in area
+    a_shrink = area(downsample(big, 0.5, 0.5, ShrinkMode))
+    a_grow   = area(downsample(big, 0.5, 0.5, GrowMode))
+    @test a_shrink ≤ a_grow
+
+    # CastToIntMode truncates toward zero
+    neg = Region([Run(-1, -1:1)])
+    @test downsample(neg, 0.5, 0.5, CastToIntMode) == Region([Run(0, 0:0)])
+
+    # Validation: non-positive factors and complement region
+    @test_throws AssertionError downsample(big, -1.0, 0.5)
+    @test_throws AssertionError downsample(big, 0.5, 0.0)
+    @test_throws AssertionError downsample(complement(big), 0.5, 0.5)
+    @test_throws AssertionError upscale(big, 0, 1)
+end
+
 @testset "hash" begin
     a = Region([Run(0, 0:2), Run(1, 0:2)])
     b = Region([Run(0, 0:2), Run(1, 0:2)])
