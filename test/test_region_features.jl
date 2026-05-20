@@ -241,4 +241,86 @@
         @test sort([rect.width, rect.height]) ≈ [3.0, 5.0]
     end
 
+    # ── Phase 2: Moments (central / normalized / Hu / Flusser) ───────────────
+
+    @testset "central_moments" begin
+        # 3×3 box centred at origin: μ11=0 (symmetry), μ30=μ03=0 (odd power × symmetric)
+        r = Region([Run(c, -1:1) for c in -1:1])
+        μ = central_moments(r)
+        @test μ.μ11 ≈ 0.0
+        @test μ.μ30 ≈ 0.0
+        @test μ.μ03 ≈ 0.0
+        @test μ.μ21 ≈ 0.0
+        @test μ.μ12 ≈ 0.0
+        # Σ x² over -1,0,1 = 2, times 3 rows = 6
+        @test μ.μ20 ≈ 6.0
+        @test μ.μ02 ≈ 6.0
+
+        # Translation invariance: μ values do not change under translation
+        r2 = translate(r, 100, -50)
+        μ2 = central_moments(r2)
+        @test μ.μ20 ≈ μ2.μ20
+        @test μ.μ02 ≈ μ2.μ02
+        @test μ.μ11 ≈ μ2.μ11
+        @test μ.μ30 ≈ μ2.μ30
+        @test μ.μ21 ≈ μ2.μ21
+        @test μ.μ12 ≈ μ2.μ12
+        @test μ.μ03 ≈ μ2.μ03
+    end
+
+    @testset "normalized_moments / scale_invariant_moments" begin
+        # Scale invariance: a circle of radius 10 and radius 30 should have
+        # almost identical normalized moments (some discretization noise)
+        c1 = region_from_circle(0, 0, 10)
+        c2 = region_from_circle(0, 0, 30)
+        η1 = normalized_moments(c1)
+        η2 = normalized_moments(c2)
+        @test isapprox(η1.η20, η2.η20; atol=5e-3)
+        @test isapprox(η1.η02, η2.η02; atol=5e-3)
+
+        # Alias works
+        @test scale_invariant_moments(c1) == normalized_moments(c1)
+    end
+
+    @testset "hu_moments" begin
+        # Circle: I1 > 0, I2..I7 should all be ≈ 0 due to rotational symmetry
+        c = region_from_circle(0, 0, 30)
+        I = hu_moments(c)
+        @test I[1] > 0
+        @test abs(I[2]) < 1e-3
+        @test abs(I[3]) < 1e-3
+        @test abs(I[4]) < 1e-3
+        @test abs(I[5]) < 1e-6
+        @test abs(I[6]) < 1e-5
+        @test abs(I[7]) < 1e-6
+
+        # Translation invariance: Hu moments unchanged after translation
+        c_translated = translate(c, 1000, -500)
+        It = hu_moments(c_translated)
+        for i in 1:7
+            @test isapprox(I[i], It[i]; atol=1e-10)
+        end
+
+        # Scale invariance: circle at different scales has matching Hu moments
+        c_small = region_from_circle(0, 0, 10)
+        I_small = hu_moments(c_small)
+        @test isapprox(I[1], I_small[1]; atol=1e-2)
+    end
+
+    @testset "flusser_moments" begin
+        # Affine invariance: I1 should be the same after pure scaling
+        c10 = region_from_circle(0, 0, 10)
+        c30 = region_from_circle(0, 0, 30)
+        F10 = flusser_moments(c10)
+        F30 = flusser_moments(c30)
+        @test F10[1] > 0
+        @test isapprox(F10[1], F30[1]; atol=1e-3)
+
+        # Translation invariance
+        F_translated = flusser_moments(translate(c10, 1000, -500))
+        for i in 1:4
+            @test isapprox(F10[i], F_translated[i]; atol=1e-8)
+        end
+    end
+
 end

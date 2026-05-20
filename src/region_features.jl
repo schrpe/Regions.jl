@@ -18,6 +18,8 @@ export feret_diameters
 export number_of_holes, area_of_holes
 export vectorized_boundaries, contour, to_point_list
 export minimum_bounding_circle, minimum_area_bounding_rectangle, minimum_perimeter_bounding_rectangle
+export central_moments, normalized_moments, scale_invariant_moments
+export hu_moments, flusser_moments
 
 
 # Basic Geometry
@@ -790,4 +792,205 @@ true
 function minimum_perimeter_bounding_rectangle(r::Region)
     @assert !r.complement && !isempty(r.runs) "minimum_perimeter_bounding_rectangle requires a non-empty, non-complement region"
     return minimum_perimeter_bounding_rectangle(convex_hull(r))
+end
+
+
+# Central, Normalized, and Invariant Moments
+
+"""
+    central_moments(r::Region) -> NamedTuple
+
+Return the central moments `(μ20, μ11, μ02, μ30, μ21, μ12, μ03)` of a region.
+Central moments are computed relative to the region's centroid; `μ10 = μ01 = 0`
+by definition and are not included. `μ00` equals `area(r)` and is also omitted.
+
+The standard relations to the raw moments `mij` (with `x̄ = m10/m00`,
+`ȳ = m01/m00`) are:
+
+- `μ20 = m20 - x̄·m10`
+- `μ11 = m11 - x̄·m01`
+- `μ02 = m02 - ȳ·m01`
+- `μ30 = m30 - 3·x̄·m20 + 2·x̄²·m10`
+- `μ21 = m21 - 2·x̄·m11 - ȳ·m20 + 2·x̄²·m01`
+- `μ12 = m12 - 2·ȳ·m11 - x̄·m02 + 2·ȳ²·m10`
+- `μ03 = m03 - 3·ȳ·m02 + 2·ȳ²·m01`
+
+```jldoctest
+julia> using Regions
+
+julia> μ = central_moments(Region([Run(c, -1:1) for c in -1:1]));   # 3×3 box centred at origin
+
+julia> μ.μ11 ≈ 0.0 && μ.μ30 ≈ 0.0 && μ.μ03 ≈ 0.0
+true
+
+julia> μ.μ20 ≈ 6.0 && μ.μ02 ≈ 6.0
+true
+```
+"""
+function central_moments(r::Region)
+    @assert !r.complement && !isempty(r.runs) "central_moments requires a non-empty, non-complement region"
+    m = _raw_moments(r)
+    x̄ = m.m10 / m.m00
+    ȳ = m.m01 / m.m00
+    μ20 = m.m20 - x̄ * m.m10
+    μ11 = m.m11 - x̄ * m.m01
+    μ02 = m.m02 - ȳ * m.m01
+    μ30 = m.m30 - 3x̄ * m.m20 + 2x̄^2 * m.m10
+    μ21 = m.m21 - 2x̄ * m.m11 - ȳ * m.m20 + 2x̄^2 * m.m01
+    μ12 = m.m12 - 2ȳ * m.m11 - x̄ * m.m02 + 2ȳ^2 * m.m10
+    μ03 = m.m03 - 3ȳ * m.m02 + 2ȳ^2 * m.m01
+    return (μ20=μ20, μ11=μ11, μ02=μ02, μ30=μ30, μ21=μ21, μ12=μ12, μ03=μ03)
+end
+
+
+"""
+    normalized_moments(r::Region) -> NamedTuple
+
+Return the scale-normalized central moments `(η20, η11, η02, η30, η21, η12, η03)`.
+Each `η_pq = μ_pq / μ00^γ` with `γ = (p + q) / 2 + 1`, so `η_pq` is invariant
+under uniform scaling of the region.
+
+[`scale_invariant_moments`](@ref) is an alias for this function.
+
+```jldoctest
+julia> using Regions
+
+julia> η = normalized_moments(region_from_circle(0, 0, 30));
+
+julia> abs(η.η11) < 1e-3
+true
+```
+"""
+function normalized_moments(r::Region)
+    @assert !r.complement && !isempty(r.runs) "normalized_moments requires a non-empty, non-complement region"
+    μ = central_moments(r)
+    μ00 = Float64(area(r))
+    η(p, q, val) = val / μ00^((p + q) / 2 + 1)
+    return (η20=η(2, 0, μ.μ20),
+            η11=η(1, 1, μ.μ11),
+            η02=η(0, 2, μ.μ02),
+            η30=η(3, 0, μ.μ30),
+            η21=η(2, 1, μ.μ21),
+            η12=η(1, 2, μ.μ12),
+            η03=η(0, 3, μ.μ03))
+end
+
+"""
+    scale_invariant_moments(r::Region) -> NamedTuple
+
+Alias for [`normalized_moments`](@ref). Returns the scale-invariant central
+moments `(η20, η11, η02, η30, η21, η12, η03)`.
+"""
+scale_invariant_moments(r::Region) = normalized_moments(r)
+
+
+"""
+    hu_moments(r::Region) -> NTuple{7,Float64}
+
+Return Hu's seven moment invariants `(I1, I2, I3, I4, I5, I6, I7)` computed from
+the normalized central moments. Hu moments are invariant under translation,
+uniform scaling and rotation, so they form a classic shape descriptor for
+rotation-and-scale-tolerant matching.
+
+The formulas (Hu, 1962):
+
+- `I1 = η20 + η02`
+- `I2 = (η20 − η02)² + 4·η11²`
+- `I3 = (η30 − 3·η12)² + (3·η21 − η03)²`
+- `I4 = (η30 + η12)² + (η21 + η03)²`
+- `I5 = (η30 − 3·η12)·(η30 + η12)·[(η30 + η12)² − 3·(η21 + η03)²] +
+        (3·η21 − η03)·(η21 + η03)·[3·(η30 + η12)² − (η21 + η03)²]`
+- `I6 = (η20 − η02)·[(η30 + η12)² − (η21 + η03)²] +
+        4·η11·(η30 + η12)·(η21 + η03)`
+- `I7 = (3·η21 − η03)·(η30 + η12)·[(η30 + η12)² − 3·(η21 + η03)²] −
+        (η30 − 3·η12)·(η21 + η03)·[3·(η30 + η12)² − (η21 + η03)²]`
+
+```jldoctest
+julia> using Regions
+
+julia> I = hu_moments(region_from_circle(0, 0, 20));
+
+julia> abs(I[2]) < 1e-3   # circle: rotational symmetry → I2 ≈ 0
+true
+```
+"""
+function hu_moments(r::Region)
+    η = normalized_moments(r)
+    a = η.η30 - 3η.η12
+    b = 3η.η21 - η.η03
+    p = η.η30 + η.η12
+    q = η.η21 + η.η03
+    I1 = η.η20 + η.η02
+    I2 = (η.η20 - η.η02)^2 + 4η.η11^2
+    I3 = a^2 + b^2
+    I4 = p^2 + q^2
+    I5 = a * p * (p^2 - 3q^2) + b * q * (3p^2 - q^2)
+    I6 = (η.η20 - η.η02) * (p^2 - q^2) + 4η.η11 * p * q
+    I7 = b * p * (p^2 - 3q^2) - a * q * (3p^2 - q^2)
+    return (I1, I2, I3, I4, I5, I6, I7)
+end
+
+
+"""
+    flusser_moments(r::Region) -> NTuple{4,Float64}
+
+Return the first four Flusser–Suk affine moment invariants
+`(I1, I2, I3, I4)` (Flusser & Suk, 1993). These are invariant under general
+affine transformations (translation, scaling, rotation, shear), which makes
+them more robust than [`hu_moments`](@ref) when the imaged object can be
+viewed under perspective change.
+
+The invariants are formed from central moments `μij` and the area `μ00`:
+
+- `I1 = (μ20·μ02 − μ11²) / μ00^4`
+- `I2 = (μ30²·μ03² − 6·μ30·μ21·μ12·μ03 + 4·μ30·μ12³ + 4·μ21³·μ03 −
+         3·μ21²·μ12²) / μ00^10`
+- `I3 = (μ20·(μ21·μ03 − μ12²) − μ11·(μ30·μ03 − μ21·μ12) +
+         μ02·(μ30·μ12 − μ21²)) / μ00^7`
+- `I4 = (μ20³·μ03² − 6·μ20²·μ11·μ12·μ03 − 6·μ20²·μ02·μ21·μ03 +
+         9·μ20²·μ02·μ12² + 12·μ20·μ11²·μ21·μ03 +
+         6·μ20·μ11·μ02·μ30·μ03 − 18·μ20·μ11·μ02·μ21·μ12 −
+         8·μ11³·μ30·μ03 − 6·μ20·μ02²·μ30·μ12 + 9·μ20·μ02²·μ21² +
+         12·μ11²·μ02·μ30·μ12 − 6·μ11·μ02²·μ30·μ21 +
+         μ02³·μ30²) / μ00^11`
+
+```jldoctest
+julia> using Regions
+
+julia> F = flusser_moments(region_from_circle(0, 0, 20));
+
+julia> F[1] > 0    # I1 strictly positive for any non-degenerate shape
+true
+```
+"""
+function flusser_moments(r::Region)
+    μ   = central_moments(r)
+    μ00 = Float64(area(r))
+    μ20, μ11, μ02 = μ.μ20, μ.μ11, μ.μ02
+    μ30, μ21, μ12, μ03 = μ.μ30, μ.μ21, μ.μ12, μ.μ03
+
+    I1 = (μ20 * μ02 - μ11^2) / μ00^4
+
+    I2 = (μ30^2 * μ03^2 - 6μ30 * μ21 * μ12 * μ03 + 4μ30 * μ12^3 +
+          4μ21^3 * μ03 - 3μ21^2 * μ12^2) / μ00^10
+
+    I3 = (μ20 * (μ21 * μ03 - μ12^2) -
+          μ11 * (μ30 * μ03 - μ21 * μ12) +
+          μ02 * (μ30 * μ12 - μ21^2)) / μ00^7
+
+    I4 = (μ20^3 * μ03^2 -
+          6μ20^2 * μ11 * μ12 * μ03 -
+          6μ20^2 * μ02 * μ21 * μ03 +
+          9μ20^2 * μ02 * μ12^2 +
+          12μ20 * μ11^2 * μ21 * μ03 +
+          6μ20 * μ11 * μ02 * μ30 * μ03 -
+          18μ20 * μ11 * μ02 * μ21 * μ12 -
+          8μ11^3 * μ30 * μ03 -
+          6μ20 * μ02^2 * μ30 * μ12 +
+          9μ20 * μ02^2 * μ21^2 +
+          12μ11^2 * μ02 * μ30 * μ12 -
+          6μ11 * μ02^2 * μ30 * μ21 +
+          μ02^3 * μ30^2) / μ00^11
+
+    return (I1, I2, I3, I4)
 end
