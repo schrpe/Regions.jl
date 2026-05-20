@@ -21,7 +21,7 @@ using Images
 import Images: binarize   # extend rather than shadow; Regions.binarize === Images.binarize
 
 export Run, Region
-export binarize, components
+export binarize, components, segment_multi_threshold
 
 include("range.jl")
 include("run.jl")
@@ -251,6 +251,73 @@ function components(region::Region, dx::Unsigned=unsigned(1), dy::Unsigned=unsig
     end
 
     return connected_objects;
+end
+
+"""
+    segment_multi_threshold(image, thresholds::AbstractVector) -> Vector{Region}
+
+Segment `image` into one `Region` per intensity bin, using a sorted vector of
+`thresholds` as bin boundaries. The result has `length(thresholds) + 1`
+elements:
+
+- Bin 1: pixels with value `< thresholds[1]`
+- Bin k (1 < k ≤ length(thresholds)): pixels with `thresholds[k-1] ≤ value < thresholds[k]`
+- Bin `length(thresholds)+1`: pixels with `value ≥ thresholds[end]`
+
+`thresholds` must be strictly increasing. Empty bins return empty regions but
+the result length is always `length(thresholds) + 1`, so callers can index by
+bin index without bounds checks.
+
+```jldoctest
+julia> using Regions
+
+julia> img = [0.1 0.4 0.7;
+              0.2 0.5 0.8;
+              0.3 0.6 0.9];
+
+julia> regs = segment_multi_threshold(img, [0.4, 0.7]);
+
+julia> length(regs)
+3
+
+julia> area(regs[1]) + area(regs[2]) + area(regs[3])
+9
+```
+"""
+function segment_multi_threshold(image, thresholds::AbstractVector)
+    @assert !isempty(thresholds) "thresholds vector must not be empty"
+    for i in 2:length(thresholds)
+        @assert thresholds[i] > thresholds[i-1] "thresholds must be strictly increasing"
+    end
+    rows, columns = size(image)
+    nbins = length(thresholds) + 1
+
+    # Map a pixel value to its bin index (1-based)
+    @inline function bin_of(v)
+        for k in 1:length(thresholds)
+            v < thresholds[k] && return k
+        end
+        return nbins
+    end
+
+    per_bin = [Vector{Run}() for _ in 1:nbins]
+
+    @inbounds for column in 1:columns
+        col = view(image, :, column)
+        current_bin = bin_of(col[1])
+        start_row = 1
+        for row in 2:rows
+            b = bin_of(col[row])
+            if b != current_bin
+                push!(per_bin[current_bin], Run(column, start_row:(row-1)))
+                current_bin = b
+                start_row = row
+            end
+        end
+        push!(per_bin[current_bin], Run(column, start_row:rows))
+    end
+
+    return [Region(per_bin[k], false) for k in 1:nbins]
 end
 
 end # module

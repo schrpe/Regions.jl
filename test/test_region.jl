@@ -646,6 +646,45 @@ end # "regions_to_image"
 
 end # "binarize"
 
+@testset "segment_multi_threshold" begin
+
+    # Single threshold == binarize(x -> x < t) and binarize(x -> x >= t)
+    img = Float64[0.1 0.4 0.7;
+                  0.2 0.5 0.8;
+                  0.3 0.6 0.9]
+    regs = segment_multi_threshold(img, [0.5])
+    @test length(regs) == 2
+    @test regs[1] == binarize(img, x -> x < 0.5)
+    @test regs[2] == binarize(img, x -> x >= 0.5)
+    @test area(regs[1]) + area(regs[2]) == 9
+
+    # Two thresholds → three bins; bins partition the image (disjoint, covering)
+    regs = segment_multi_threshold(img, [0.4, 0.7])
+    @test length(regs) == 3
+    @test area(regs[1]) + area(regs[2]) + area(regs[3]) == 9
+    # Bins are disjoint
+    @test isempty(intersection(regs[1], regs[2]))
+    @test isempty(intersection(regs[2], regs[3]))
+    @test isempty(intersection(regs[1], regs[3]))
+
+    # All pixels in bin 1: thresholds above max value
+    img2 = ones(Float64, 3, 3) * 0.1
+    regs = segment_multi_threshold(img2, [0.5, 0.9])
+    @test area(regs[1]) == 9
+    @test isempty(regs[2])
+    @test isempty(regs[3])
+
+    # All pixels in last bin: thresholds below min value
+    regs = segment_multi_threshold(img2, [0.05])
+    @test isempty(regs[1])
+    @test area(regs[2]) == 9
+
+    # Validation: non-monotonic thresholds
+    @test_throws AssertionError segment_multi_threshold(img, [0.5, 0.3])
+    @test_throws AssertionError segment_multi_threshold(img, Float64[])
+
+end # "segment_multi_threshold"
+
 @testset "components" begin
 
     # Empty region → no components
