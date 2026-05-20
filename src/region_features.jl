@@ -21,6 +21,7 @@ export minimum_bounding_circle, minimum_area_bounding_rectangle, minimum_perimet
 export central_moments, normalized_moments, scale_invariant_moments
 export hu_moments, flusser_moments
 export circularity, sphericity, roundness, roughness
+export fiber_length, fiber_width
 
 
 # Basic Geometry
@@ -1086,3 +1087,56 @@ function roughness(r::Region)
     cp == 0.0 && return 0.0
     return perimeter(r) / cp
 end
+
+
+# Fiber Metrics
+
+"""
+    fiber_length(r::Region) -> Float64
+
+Return half of the 4-connected perimeter — `0.5 · perimeter(r)`. For
+elongated, fiber-shaped blobs this approximates the length along the fiber
+axis (the perimeter traces one side of the fiber going out and the other
+side coming back).
+
+For a circle this gives `π·r` rather than the diameter, so the name "length"
+only carries its intended meaning on truly fiber-shaped regions.
+
+```jldoctest
+julia> using Regions
+
+julia> fiber_length(Region([Run(0, 0:0)]))    # single pixel: perimeter 4
+2.0
+
+julia> fiber_length(region_from_box(0, 0, 2, 2)) ≈ 0.5 * perimeter(region_from_box(0, 0, 2, 2))
+true
+```
+"""
+fiber_length(r::Region) = 0.5 * perimeter(r)
+
+
+"""
+    fiber_width(r::Region) -> Float64
+
+Return `2.0 · maximum(distance_transform(r))` — twice the largest city-block
+distance from any region pixel to the background. Geometrically this is the
+diameter of the biggest city-block diamond that fits inside the region; for
+thin, fiber-shaped blobs it closely tracks the cross-sectional width.
+
+Because the underlying [`distance_transform`](@ref) uses 4-connected
+(Manhattan) distance, `fiber_width` overestimates the Euclidean width for
+non-thin shapes — e.g. a 3×3 square has `fiber_width = 4.0`, not `3.0`. This
+matches the C++ reference implementation; if you need an Euclidean width,
+use [`feret_diameters`](@ref) instead.
+
+```jldoctest
+julia> using Regions
+
+julia> fiber_width(Region([Run(0, 0:0)]))            # single pixel
+2.0
+
+julia> fiber_width(region_from_box(0, 0, 2, 2))      # 3×3 square: max DT = 2
+4.0
+```
+"""
+fiber_width(r::Region) = 2.0 * maximum(distance_transform(r))
