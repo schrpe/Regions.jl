@@ -17,6 +17,7 @@ export convex_hull, convex_area, convex_perimeter, convexity, perforation
 export feret_diameters
 export number_of_holes, area_of_holes
 export vectorized_boundaries, contour, to_point_list
+export minimum_bounding_circle, minimum_area_bounding_rectangle, minimum_perimeter_bounding_rectangle
 
 
 # Basic Geometry
@@ -724,4 +725,69 @@ julia> length(contour(Region([Run(0, 0:0)])))
 function contour(r::Region)
     @assert !r.complement && !isempty(r.runs) "contour requires a non-empty, non-complement region"
     return vectorized_boundaries(r)[1]
+end
+
+
+# Bounding-Geometry Adapters for Region
+
+"""
+    minimum_bounding_circle(r::Region) -> NamedTuple
+
+Return the minimum enclosing circle of `r` as `(center, radius)`. Delegates to
+[`minimum_bounding_circle(::PointList)`](@ref) on the region's convex hull.
+
+```jldoctest
+julia> using Regions
+
+julia> c = minimum_bounding_circle(region_from_box(0, 0, 4, 4));
+
+julia> c.center[1] ≈ 2.0 && c.center[2] ≈ 2.0 && c.radius ≈ 2.5 * sqrt(2)
+true
+```
+"""
+function minimum_bounding_circle(r::Region)
+    @assert !r.complement && !isempty(r.runs) "minimum_bounding_circle requires a non-empty, non-complement region"
+    return minimum_bounding_circle(convex_hull(r))
+end
+
+"""
+    minimum_area_bounding_rectangle(r::Region) -> NamedTuple
+
+Return the minimum-area bounding rectangle of `r` as
+`(corners, width, height, angle, area)`. Delegates to
+[`minimum_area_bounding_rectangle(::PointList)`](@ref) on the region's convex hull.
+
+```jldoctest
+julia> using Regions
+
+julia> rect = minimum_area_bounding_rectangle(region_from_box(0, 0, 4, 2));
+
+julia> rect.area ≈ 5.0 * 3.0
+true
+```
+"""
+function minimum_area_bounding_rectangle(r::Region)
+    @assert !r.complement && !isempty(r.runs) "minimum_area_bounding_rectangle requires a non-empty, non-complement region"
+    return minimum_area_bounding_rectangle(convex_hull(r))
+end
+
+"""
+    minimum_perimeter_bounding_rectangle(r::Region) -> NamedTuple
+
+Return the minimum-perimeter bounding rectangle of `r` as
+`(corners, width, height, angle, perimeter)`. Delegates to
+[`minimum_perimeter_bounding_rectangle(::PointList)`](@ref) on the region's convex hull.
+
+```jldoctest
+julia> using Regions
+
+julia> rect = minimum_perimeter_bounding_rectangle(region_from_box(0, 0, 4, 2));
+
+julia> rect.perimeter ≈ 2 * (5.0 + 3.0)
+true
+```
+"""
+function minimum_perimeter_bounding_rectangle(r::Region)
+    @assert !r.complement && !isempty(r.runs) "minimum_perimeter_bounding_rectangle requires a non-empty, non-complement region"
+    return minimum_perimeter_bounding_rectangle(convex_hull(r))
 end

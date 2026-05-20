@@ -754,3 +754,55 @@ end
     r4 = region_from_line_segment(0.0, 0.0, 3.0, 3.0)
     @test area(r4) == 4
 end
+
+@testset "hash" begin
+    a = Region([Run(0, 0:2), Run(1, 0:2)])
+    b = Region([Run(0, 0:2), Run(1, 0:2)])
+    c = Region([Run(0, 0:3), Run(1, 0:2)])
+    @test hash(a) == hash(b)
+    @test hash(a) != hash(c)
+    # Complement flag affects the hash
+    @test hash(a) != hash(Region(a.runs, true))
+    # Region usable as Dict key
+    d = Dict(a => 1)
+    @test d[b] == 1
+    # Region usable in a Set
+    s = Set([a, b, c])
+    @test length(s) == 2
+end
+
+@testset "set_union / set_intersection / filter_area" begin
+    # set_union: disjoint, overlapping, empty input
+    a = region_from_box(0, 0, 2, 2)
+    b = region_from_box(5, 5, 7, 7)
+    @test area(set_union([a, b])) == area(a) + area(b)
+    @test set_union([a, b]) == set_union([b, a])                   # commutative result-set
+    @test isempty(set_union(Region[]))
+    @test set_union([a]) == a
+
+    # Overlap reduces total area
+    c = region_from_box(0, 0, 3, 3)
+    d = region_from_box(2, 2, 5, 5)
+    @test area(set_union([c, d])) < area(c) + area(d)
+
+    # set_intersection: triple-overlap and empty
+    e = region_from_box(0, 0, 5, 5)
+    f = region_from_box(3, 3, 8, 8)
+    g = region_from_box(4, 4, 9, 9)
+    @test area(set_intersection([e, f, g])) == 4   # 4×4=16? Recompute carefully
+    # Box (0,0,5,5) is cols 0..5, rows 0..5 (6 columns each running rows 0..5);
+    # ∩ (3..8, 3..8) → cols 3..5, rows 3..5; further ∩ (4..9, 4..9) → cols 4..5, rows 4..5
+    # That's 2 columns × 2 rows = 4 pixels — matches.
+    @test set_intersection([e]) == e
+    @test_throws AssertionError set_intersection(Region[])
+
+    # filter_area
+    small = Region([Run(0, 0:0)])
+    big   = region_from_box(0, 0, 5, 5)
+    @test length(filter_area([small, big], >, 10)) == 1
+    @test filter_area([small, big], >, 10)[1] == big
+    @test length(filter_area([small, big], <=, 1)) == 1
+    @test filter_area([small, big], <=, 1)[1] == small
+    @test isempty(filter_area([small, big], >, 1000))
+    @test length(filter_area([small, big], >=, 1)) == 2
+end

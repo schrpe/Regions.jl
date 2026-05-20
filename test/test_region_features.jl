@@ -214,4 +214,31 @@
         @test area_of_holes(ring) == 9
     end
 
+    # ── Phase 1: Region adapters for bounding geometries ─────────────────────
+
+    @testset "minimum_bounding_circle(::Region)" begin
+        r = region_from_box(0, 0, 4, 4)   # 5×5 pixel square, corners at (-0.5,-0.5)..(4.5,4.5)
+        c = minimum_bounding_circle(r)
+        # Circumcircle: center at bounding-box centre, radius = half-diagonal of the
+        # half-integer corner box (side 5 → diagonal √50 → radius 2.5·√2)
+        @test c.center[1] ≈ 2.0
+        @test c.center[2] ≈ 2.0
+        @test c.radius ≈ 2.5 * sqrt(2)
+    end
+
+    @testset "minimum_area_bounding_rectangle(::Region)" begin
+        r = region_from_box(0, 0, 4, 2)   # 5 wide × 3 tall
+        rect = minimum_area_bounding_rectangle(r)
+        @test rect.area ≈ 5.0 * 3.0
+        # Width and height match the box dimensions (any orientation)
+        @test sort([rect.width, rect.height]) ≈ [3.0, 5.0]
+    end
+
+    @testset "minimum_perimeter_bounding_rectangle(::Region)" begin
+        r = region_from_box(0, 0, 4, 2)
+        rect = minimum_perimeter_bounding_rectangle(r)
+        @test rect.perimeter ≈ 2 * (5.0 + 3.0)
+        @test sort([rect.width, rect.height]) ≈ [3.0, 5.0]
+    end
+
 end

@@ -9,6 +9,7 @@ export regions_to_image
 export erosion, dilation, opening, closing
 export morphological_gradient, inner_boundary, outer_boundary
 export fill_holes
+export set_union, set_intersection, filter_area
 
 """
     left(x::Vector{Region})
@@ -414,3 +415,81 @@ true
 """
 fill_holes(regions::Vector{Region}) =
     map(fill_holes, regions)
+
+#= ------------------------------------------------------------------------
+
+    Set-theoretic reductions and filtering on Vector{Region}
+
+------------------------------------------------------------------------ =#
+
+"""
+    set_union(regions::Vector{Region}) -> Region
+
+Return the set-theoretic union of every region in the vector. Equivalent to
+`reduce(union, regions)`. An empty input vector yields an empty `Region`.
+
+```jldoctest
+julia> using Regions
+
+julia> a = region_from_box(0, 0, 2, 2);
+
+julia> b = region_from_box(5, 5, 7, 7);
+
+julia> area(set_union([a, b])) == area(a) + area(b)
+true
+
+julia> isempty(set_union(Region[]))
+true
+```
+"""
+function set_union(regions::Vector{Region})
+    isempty(regions) && return Region(Run[], false)
+    return reduce(union, regions)
+end
+
+"""
+    set_intersection(regions::Vector{Region}) -> Region
+
+Return the set-theoretic intersection of every region in the vector. Equivalent
+to `reduce(intersection, regions)`. The input must be non-empty.
+
+```jldoctest
+julia> using Regions
+
+julia> a = region_from_box(0, 0, 5, 5);
+
+julia> b = region_from_box(3, 3, 8, 8);
+
+julia> c = region_from_box(4, 4, 9, 9);
+
+julia> area(set_intersection([a, b, c]))
+4
+```
+"""
+function set_intersection(regions::Vector{Region})
+    @assert !isempty(regions) "set_intersection requires a non-empty vector"
+    return reduce(intersection, regions)
+end
+
+"""
+    filter_area(regions::Vector{Region}, op, value::Real) -> Vector{Region}
+
+Return the regions whose `area` satisfies `op(area(r), value)`. `op` is any
+comparison function — typically one of `<`, `<=`, `==`, `!=`, `>=`, `>`.
+
+```jldoctest
+julia> using Regions
+
+julia> small = Region([Run(0, 0:0)]);
+
+julia> big   = region_from_box(0, 0, 5, 5);
+
+julia> length(filter_area([small, big], >, 10))
+1
+
+julia> filter_area([small, big], >, 10)[1] == big
+true
+```
+"""
+filter_area(regions::Vector{Region}, op, value::Real) =
+    filter(r -> op(area(r), value), regions)

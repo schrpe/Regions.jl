@@ -4,7 +4,7 @@
 
 ------------------------------------------------------------------------ =#
 
-import Base: copy, -, union, ==, show
+import Base: copy, -, union, ==, show, hash
 export Region
 export isempty, ==, copy, invert, -, translate, translate!, center_region, is_centered, contains, ∈
 export left, top, right, bottom, bounds
@@ -101,6 +101,29 @@ true
 ```
 """
 ==(a::Region, b::Region) = a.runs == b.runs && a.complement == b.complement
+
+"""
+    hash(r::Region, h::UInt) -> UInt
+
+Hash a region by combining the hashes of its `runs` vector and `complement` flag.
+Consistent with `==`: regions that compare equal hash equal, so `Region`s can be
+used as keys in `Dict` / `Set`.
+
+```jldoctest
+julia> using Regions
+
+julia> a = Region([Run(0, 0:2), Run(1, 0:2)]);
+
+julia> b = Region([Run(0, 0:2), Run(1, 0:2)]);
+
+julia> hash(a) == hash(b)
+true
+
+julia> d = Dict(a => "first"); d[b]
+"first"
+```
+"""
+hash(r::Region, h::UInt) = hash(r.complement, hash(r.runs, h))
 
 """
     copy(x::Region)
