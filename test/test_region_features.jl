@@ -323,4 +323,42 @@
         end
     end
 
+    # ── Phase 3: Shape descriptors ───────────────────────────────────────────
+
+    @testset "circularity" begin
+        # In [0, 1] for any non-empty region
+        circle = region_from_circle(0, 0, 50)
+        @test 0 < circularity(circle) ≤ 1.0
+        # Square is less circular than a disk (4-connected perimeter is similar
+        # in absolute terms but area-to-perimeter favours the disk slightly)
+        @test circularity(circle) > 0.7
+        # Degenerate: single pixel -> 4-conn perim = 4, area = 1
+        # circularity = 2*sqrt(π) / 4 ≈ 0.886
+        @test circularity(Region([Run(0, 0:0)])) ≈ 2 * sqrt(π) / 4
+    end
+
+    @testset "sphericity" begin
+        # Disk is highly spherical
+        @test sphericity(region_from_circle(0, 0, 50)) > 0.95
+        # Long thin bar is much less spherical
+        bar = region_from_box(0, 0, 19, 1)
+        @test sphericity(bar) < 0.5
+    end
+
+    @testset "roundness" begin
+        @test 0 < roundness(region_from_circle(0, 0, 50)) ≤ 1.0
+        @test roundness(region_from_circle(0, 0, 50)) > 0.9
+        # A square fills only ~63 % of its bounding circle (π·r² where r = halfdiag)
+        # 5×5 square area=25; bounding circle radius = 2.5·√2; π·r² = 6.25·2π = 39.27
+        sq = region_from_box(0, 0, 4, 4)
+        @test roundness(sq) ≈ 25.0 / (π * (2.5 * sqrt(2))^2)
+    end
+
+    @testset "roughness" begin
+        # Convex region: perimeter == convex_perimeter for axis-aligned rectangles
+        @test roughness(region_from_box(0, 0, 4, 4)) ≈ 1.0
+        # Discretised circle has a longer 4-connected perimeter than its convex hull
+        @test roughness(region_from_circle(0, 0, 50)) > 1.0
+    end
+
 end

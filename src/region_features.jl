@@ -20,6 +20,7 @@ export vectorized_boundaries, contour, to_point_list
 export minimum_bounding_circle, minimum_area_bounding_rectangle, minimum_perimeter_bounding_rectangle
 export central_moments, normalized_moments, scale_invariant_moments
 export hu_moments, flusser_moments
+export circularity, sphericity, roundness, roughness
 
 
 # Basic Geometry
@@ -993,4 +994,95 @@ function flusser_moments(r::Region)
           μ02^3 * μ30^2) / μ00^11
 
     return (I1, I2, I3, I4)
+end
+
+
+# Shape Descriptors
+
+"""
+    circularity(r::Region) -> Float64
+
+Return `2·√(π·area) / perimeter`. Equals 1 for an ideal disk and decreases
+towards 0 for shapes with a longer boundary relative to their area. This is
+different from [`compactness`](@ref), which is the isoperimetric ratio
+`perimeter² / (4π·area)`.
+
+```jldoctest
+julia> using Regions
+
+julia> 0.0 < circularity(region_from_circle(0, 0, 50)) ≤ 1.0
+true
+```
+"""
+function circularity(r::Region)
+    p = perimeter(r)
+    p == 0.0 && return 0.0
+    return 2.0 * sqrt(π * area(r)) / p
+end
+
+
+"""
+    sphericity(r::Region) -> Float64
+
+Return `2·√(area/π) / max_feret`. Equals 1 for an ideal disk and decreases
+towards 0 for elongated shapes — the ratio of the equivalent-area-disk
+diameter to the longest caliper width.
+
+```jldoctest
+julia> using Regions
+
+julia> sphericity(region_from_circle(0, 0, 50)) > 0.95
+true
+```
+"""
+function sphericity(r::Region)
+    _, max_f = feret_diameters(r)
+    max_f == 0.0 && return 0.0
+    return 2.0 * sqrt(area(r) / π) / max_f
+end
+
+
+"""
+    roundness(r::Region) -> Float64
+
+Return `area / (π·r²)` where `r` is the radius of the minimum bounding circle.
+Equals 1 for an ideal disk and decreases for shapes that do not fill their
+bounding circle.
+
+```jldoctest
+julia> using Regions
+
+julia> 0.0 < roundness(region_from_circle(0, 0, 50)) ≤ 1.0
+true
+```
+"""
+function roundness(r::Region)
+    c = minimum_bounding_circle(r)
+    c.radius == 0.0 && return 0.0
+    return area(r) / (π * c.radius^2)
+end
+
+
+"""
+    roughness(r::Region) -> Float64
+
+Return `perimeter / convex_perimeter`. Equals 1 for a convex region (whose
+4-connected boundary length equals its convex-hull perimeter) and exceeds 1
+when the actual boundary stair-steps or has concavities, making it longer
+than the convex hull.
+
+```jldoctest
+julia> using Regions
+
+julia> roughness(region_from_box(0, 0, 4, 4)) ≈ 1.0    # rectangle is convex
+true
+
+julia> roughness(region_from_circle(0, 0, 50)) > 1.0   # stair-stepped circle
+true
+```
+"""
+function roughness(r::Region)
+    cp = convex_perimeter(r)
+    cp == 0.0 && return 0.0
+    return perimeter(r) / cp
 end
